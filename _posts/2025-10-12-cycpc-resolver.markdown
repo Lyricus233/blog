@@ -4,7 +4,7 @@ title: CYCPC 滚榜记录
 date: 2025-10-12 00:46:43 +0800
 category: 技术向
 tags: [xcpc, resolver]
-# image: 
+image: https://s1.bpoj.top/6001fdfc992331d6793fb7edf532b0bf.png
 locale: zh_CN
 description: CYCPC Resovler Notes
 math: false
