@@ -32,32 +32,32 @@ resolver.bat event-feed-awards.ndjson --display_name "{team.display_name}（{org
 
 1. 使用 cdp 包滚榜并设置滚榜速度为 2 倍（小于 1 为减速）
 
-```
-resolver.bat ./cdp/ --display_name "{team.display_name}（{org.formal_name}）" --speed 2
-```
+    ```
+    resolver.bat ./cdp/ --display_name "{team.display_name}（{org.formal_name}）" --speed 2
+    ```
 
 2. 中文字体无法显示
 
-在 resolver.bat 里写 `set ICPC_FONT="DengXian"`，或者修改对应环境变量。
+    在 resolver.bat 里写 `set ICPC_FONT="DengXian"`，或者修改对应环境变量。
 
 3. cdp包格式
 
-```
-./cdp
-│  event-feed.ndjson
-│
-├─contest
-│      logo.png
-│
-├─organizations
-│  ├─org-85
-│  │      logo.png
-|
-└─teams
-    └─team-85
-            photo.png
-```
+    ```
+    ./cdp
+    │  event-feed.ndjson
+    │
+    ├─contest
+    │      logo.png
+    │
+    ├─organizations
+    │  ├─org-85
+    │  │      logo.png
+    |
+    └─teams
+        └─team-85
+                photo.png
+    ```
 
 4. 常用快捷键
 
-空格开始滚榜，上下箭头控制滚榜速度，ctrl+q 退出。
+    空格开始滚榜，上下箭头控制滚榜速度，ctrl+q 退出。
