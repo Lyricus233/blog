@@ -13,6 +13,7 @@ math: true
 考虑怎样维护区间和。
 
 由斐波那契数列：
+
 $$
 f_1=1,f_2=1\\
 
@@ -20,20 +21,27 @@ f_3=f_1+f_2,f_4=f_1+2\times f_2\\
 
 f_5=2\times f_1+3\times f_2,f_6=3\times f_1+5\times f_2
 $$
+
 可得
+
 $$
 f_i=f_{i-1}\times f_2 + f_{i-2}\times f_1.
 $$
+
 我们定义 $g(i)$ 为任意起点的一段斐波那契数列，则：
+
 $$
 \begin{cases} g(1) = u,\\ g(2) = v,\\ g(i) = g(i-1) + g(i-2)\quad(i\ge3). \end{cases}
 $$
+
 由数学归纳法及上述结论可证得：
+
 $$
 g(i) \;=\; \begin{cases} u, & i=1,\\ v, & i=2,\\ u\,f_{\,i-2}+v\,f_{\,i-1}, & i\ge3. \end{cases}
 $$
 
 一次操作 “对所有 $l\le i\le r$ 将 $a_i$ 加上 $f_{i-l+1}$“ 相当于在每个 $i \in [l,r]$ 上，加上 $g(i-l+1)$。这里 $u,v$ 都为 $1$，所以 $g(i-l+1)=f_{i-l-1}+f_{i-l}$。我们在线段树每个节点上维护一个懒标记对 $(u,v)$，表示当前节点未向下更新的斐波那契数列前两项的值（等价于用 $g$ 的前两项值确定斐波那契起点）。更新懒标记时，区间和加上这一段 $g$ 的总和 $\ell=R-L+1,s_{\ell}=\sum\limits_{i=1}^{\ell}g(i)=uf_{\ell}+v(f_{\ell+1}-1)$，懒标记累加更新 $u,v$ 即可。对于 $\texttt{PushDown}$ 操作，左子树序列起点与父节点相同，直接下传。右子树区间起点向右偏移了 $\ell'$ 个单位（$\ell'$ 为左子树序列长度），所以右子树序列是从 $g(\ell'+1)$ 开始的，所以
+
 $$
 \begin{cases} u'=g(\ell'+1)=uf_{\ell'-1}+vf_{\ell'}, \\ v'=g(\ell'+2)=uf_{\ell'}+vf_{\ell'+1}. \end{cases}
 $$
@@ -336,9 +344,9 @@ int Ask(int p, int k) {
 
 对于第一类 $s$，答案是 $n!$。
 
-分析第二类 $s$，我们可以枚举分割点 $k$，然后左部分可能的方案数为 $A^{k}_{n}$，在左边被选出的 $k$ 个数中，仅有 $1$ 种顺序使得这 $k$ 个数是降序的，所以降序的方案数为 $C^{k}_{n}$。所以左边合法方案数就是 $A^{k}_{n} - C^{k}_{n}$，最后右边合法方案数就是取不重复的剩下 $n-k$ 个数，方案数为 $(n-k)!$。
+分析第二类 $s$，我们可以枚举分割点 $k$，然后左部分可能的方案数为 $$A^{k}_{n}$$，在左边被选出的 $k$ 个数中，仅有 $1$ 种顺序使得这 $k$ 个数是降序的，所以降序的方案数为 $$C^{k}_{n}$$。所以左边合法方案数就是 $$A^{k}_{n} - C^{k}_{n}$$，最后右边合法方案数就是取不重复的剩下 $n-k$ 个数，方案数为 $(n-k)!$。
 
-整理答案得 $n! + \sum\limits_{k=1}^{n-1}(A^{k}_{n}-C^{k}_{n})\times (n-k)!$。
+整理答案得 $$n! + \sum\limits_{k=1}^{n-1}(A^{k}_{n}-C^{k}_{n})\times (n-k)!$$。
 
 ```cpp
 int qpow(int a, int b) {
@@ -392,22 +400,34 @@ void Solve() {
 首先我们知道达到终态需要满足相邻元素相同的对数为 $2\times(n-1)$，初态为 $0$ 对，操作过程中除第一次操作外（$1$ 对）其余每次最多产生 $2$ 对，所以答案的下界为 $n$。考虑如何构造达到下界的方案。
 
 先手模样例，以 $n=8$ 为例，按如下步骤置换：
+
 $$
+\begin{array}{c}
 \texttt{\textcolor{blue}{\_\_}BABABABABABABABA}\\
 \texttt{\textcolor{red}{AB}BABABABABABAB\textcolor{blue}{\_\_}A}\\
 \texttt{ABBA\textcolor{blue}{\_\_}BABABABAB\textcolor{red}{BA}A}\\
+\end{array}
 $$
-此时，中间的 $\texttt{\textcolor{blue}{\_\_}BABABABA}$ 变成了一个类似的子问题，长度为 $n-4$。我们继续往下递归，直到中间部分有序：
+
+此时，中间的 $$\texttt{\textcolor{blue}{\_\_}BABABABA}$$ 变成了一个类似的子问题，长度为 $n-4$。我们继续往下递归，直到中间部分有序：
+
 $$
 \texttt{ABBA\textcolor{red}{AAAABBBB}\textcolor{blue}{\_\_}BBAA}
 $$
+
 继续构造。
+
 $$
+\begin{array}{c}
 \texttt{A\textcolor{blue}{\_\_}AAAAABBBB\textcolor{red}{BB}BBAA}\\
 \texttt{A\textcolor{red}{AA}AAAAABBBBBBBB\textcolor{blue}{\_\_}}\\
+\end{array}
 $$
+
 可以从上例中发现一个更为通用的解法：
+
 $$
+\begin{array}{c}
 \texttt{\_\_BA|BA...BA|BABA}\\
 \texttt{\textcolor{red}{AB}BA|BA...BA|B\textcolor{blue}{\_\_}A}\\
 \texttt{ABBA|\textcolor{blue}{\_\_}...BA|B\textcolor{red}{BA}A}\\
@@ -415,7 +435,9 @@ $$
 \texttt{ABBA|AAAA...BB\textcolor{blue}{\_\_}|BBAA}\\
 \texttt{A\textcolor{blue}{\_\_}A|AAAA...BB\textcolor{red}{BB}|BBAA}\\
 \texttt{A\textcolor{red}{AA}A|AAAA...BBBB|BB\textcolor{blue}{\_\_}}\\
+\end{array}
 $$
+
 考虑 $n=3$ 的情况，模拟可以发现，我们无法在左侧拓展 $2$ 格的条件下完成转移，特判一下即可。
 
 初始时有 $2n$ 个位置，我们每次递归需要隔离出 $8$ 个位置，我们要保证下一次递归序列有效需满足 $2n-8\ge8,n\ge8$。如果 $n \in [3,7]$，则 $n-4\le3$ 方案对此序列无效。所以对于 $n\ge 8$ 的序列进行递归操作，$3\le n \le 7$ 的序列直接打表输出方案即可。
@@ -960,7 +982,7 @@ void Solve() {
 
 ## [SGU298 King Berl VI](https://vjudge.net/problem/SGU-298)
 
-题意：加上了限制 $|A_i|\le 10000$，和要求最小化 $A_n-A_1$。$n\le10000,m\le 10^5$，限制形如 $a_x\ge a_y+c$ 其中 $0\le c\le 1000$。
+题意：加上了限制 $\|A_i\|\le 10000$ ，和要求最小化 $A_n-A_1$ 。 $n\le10000,m\le 10^5$ ，限制形如 $a_x\ge a_y+c$ 其中 $0\le c\le 1000$ 。
 
 差分约束好题。
 
@@ -1680,10 +1702,10 @@ signed main() {
 
 不难发现，这样会把所有相邻不同的元素删掉，最后剩下的一定是若干个 $0$ 或若干个 $1$。
 
-设串串原来 $0,1,2$ 的个数分别为 $c_0,c_1,c_2$，不难发现，由于删除操作删除的是一对 $0$ 和 $1$，所以 $|c_0-c_1|$ 恒不变。因此我们只需要考虑 $c_2$ 和 $|c_0-c_1|$ 的关系即可。
+设串串原来 $0,1,2$ 的个数分别为 $c_0,c_1,c_2$，不难发现，由于删除操作删除的是一对 $0$ 和 $1$，所以 $\|c_0-c_1\|$ 恒不变。因此我们只需要考虑 $c_2$ 和 $\|c_0-c_1\|$ 的关系即可。
 
-- 若 $c_2 < |c_0-c_1|$，我们可以将 $2$ 全部改为 $0$ 和 $1$ 中数量最少的，这样可以保证消除的 $01$ 对数量最大化。
-- 若 $c_2 \ge |c_0-c_1|$，多余的 $2$ 可以两两抵消，最后答案就是 $(|c_0-c_1| + c_2)\operatorname{mod}2$ 。
+- 若 $c_2 < \|c_0-c_1\|$，我们可以将 $2$ 全部改为 $0$ 和 $1$ 中数量最少的，这样可以保证消除的 $01$ 对数量最大化。
+- 若 $c_2 \ge \|c_0-c_1\|$，多余的 $2$ 可以两两抵消，最后答案就是 $(\|c_0-c_1\| + c_2)\operatorname{mod}2$ 。
 
 ```cpp
 void Solve() {
@@ -1792,7 +1814,7 @@ signed main() {
 
 发现点的数量很少，并且序列 A 中对多个连续段操作可以合并成一次操作。考虑用线段树进行优化。我们用线段树节点维护序列 A 中的一个区间 $[l, r]$，表示从某个点出发，经过 A 序列中的这段区间可以到达哪个点。如果第 $i$ 个点经过 $A_l,A_{l+1},...,A_x$ 操作后可以到达 $j$，经过 $A_x,A_{x+1},...,A_r$ 操作后可以到达 $k$，则 $i$ 可以经过 $A_l,...,A_r$ 操作直接到达 $k$，将节点信息向上更新即可。 
 
-``` T669094 cpp
+``` cpp
 struct Road {
     int u, v; // A_u \sim A_v
 } rd[N];
