@@ -26,6 +26,8 @@ url: "https://blog.liuh.im"
 
 github:
   username: LYkcul # change to your GitHub username
+  branch: main
+  repository: blog
 
 twitter:
   username: twitter_username # change to your Twitter username
