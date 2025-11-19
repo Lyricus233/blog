@@ -4,7 +4,7 @@ icon: fas fa-info-circle
 order: 4
 ---
 
-I'm BlackPanda, aka Lyricus.
+I'm Lyricus, aka BlackPanda.
 
 -   ⚒️ C++ / TypeScript / JavaScript / Python / Web
 -   🌱 From China
