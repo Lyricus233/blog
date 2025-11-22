@@ -4,6 +4,7 @@ title: 一篇提前的 2025 年度总结
 date: 2025-11-23 02:36:00 +0800
 category: 年度总结
 tags: [年度总结]
+image: https://s1.bpoj.top/1120915233d1d7e2add96d9440e96cb0.png
 locale: zh_CN
 ---
 
