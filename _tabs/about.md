@@ -13,7 +13,7 @@ I'm Lyricus, aka BlackPanda.
 
 <h1 align="center" style="margin-top: 30px;">
     Reach me on 
-    <img src="https://media.giphy.com/media/mGcNjsfWAjY5AEZNw6/giphy.gif" width="50">
+    <img alt="hint" src="https://media.giphy.com/media/mGcNjsfWAjY5AEZNw6/giphy.gif" width="50">
 </h1>
 
 <p align="center">  
