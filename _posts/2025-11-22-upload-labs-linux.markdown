@@ -1404,3 +1404,8 @@ if(!empty($_FILES['upload_file'])){
 这一关检查了 MIME 类型和文件后缀。代码里有个 `!is_array($file)` 的检查，提示我们 `save_name` 参数可以传数组。
 
 代码中 `$file_name = reset($file) . '.' . $file[count($file) - 1];` 里的 `reset` 会返回数组中第一个元素，如果我们上传 `save_name[0] = webshell.php, save_name[2] = png`，这样 `$file[count($file) - 1]` 为空，最后文件名为 `webshell.php.`，达到目的。
+
+## 参考文章
+
+- https://sxksec.cn/2025/01/02/ctf-shi-zhan/web-buuoj-upload-labs-linux-wen-jian-shang-chuan/
+- https://ctf-wiki.org/
