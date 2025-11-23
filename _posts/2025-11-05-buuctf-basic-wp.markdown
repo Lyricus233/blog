@@ -154,7 +154,3 @@ response:
 
 [见此](/posts/upload-labs-linux)。
 
-## 参考文章
-
-- https://sxksec.cn/2025/01/02/ctf-shi-zhan/web-buuoj-upload-labs-linux-wen-jian-shang-chuan/
-- https://ctf-wiki.org/
