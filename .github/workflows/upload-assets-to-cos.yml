@@ -51,5 +51,4 @@ jobs:
 
       - name: Upload /assets to COS
         run: |
-          # 把本地 _site/assets/ 上传到 COS 的 /assets/ 目录
-          coscmd upload -r ./_site/assets/ /assets/
+          coscmd upload -rs ./_site/assets/ /assets/
