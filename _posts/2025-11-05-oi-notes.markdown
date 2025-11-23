@@ -1,0 +1,2155 @@
+---
+layout: post
+title: OI 做题笔记
+date: 2025-11-05 09:49:23 +0800
+category: 算法竞赛
+tags: [OI]
+locale: zh_CN
+math: true
+---
+
+## [CF446C DZY Loves Fibonacci Numbers](https://codeforces.com/problemset/problem/446/C)
+
+考虑怎样维护区间和。
+
+由斐波那契数列：
+
+$$
+f_1=1,f_2=1\\
+
+f_3=f_1+f_2,f_4=f_1+2\times f_2\\
+
+f_5=2\times f_1+3\times f_2,f_6=3\times f_1+5\times f_2
+$$
+
+可得
+
+$$
+f_i=f_{i-1}\times f_2 + f_{i-2}\times f_1.
+$$
+
+我们定义 $g(i)$ 为任意起点的一段斐波那契数列，则：
+
+$$
+\begin{cases} g(1) = u,\\ g(2) = v,\\ g(i) = g(i-1) + g(i-2)\quad(i\ge3). \end{cases}
+$$
+
+由数学归纳法及上述结论可证得：
+
+$$
+g(i) \;=\; \begin{cases} u, & i=1,\\ v, & i=2,\\ u\,f_{\,i-2}+v\,f_{\,i-1}, & i\ge3. \end{cases}
+$$
+
+一次操作 “对所有 $l\le i\le r$ 将 $a_i$ 加上 $f_{i-l+1}$“ 相当于在每个 $i \in [l,r]$ 上，加上 $g(i-l+1)$。这里 $u,v$ 都为 $1$，所以 $g(i-l+1)=f_{i-l-1}+f_{i-l}$。我们在线段树每个节点上维护一个懒标记对 $(u,v)$，表示当前节点未向下更新的斐波那契数列前两项的值（等价于用 $g$ 的前两项值确定斐波那契起点）。更新懒标记时，区间和加上这一段 $g$ 的总和 $\ell=R-L+1,s_{\ell}=\sum\limits_{i=1}^{\ell}g(i)=uf_{\ell}+v(f_{\ell+1}-1)$，懒标记累加更新 $u,v$ 即可。对于 $\texttt{PushDown}$ 操作，左子树序列起点与父节点相同，直接下传。右子树区间起点向右偏移了 $\ell'$ 个单位（$\ell'$ 为左子树序列长度），所以右子树序列是从 $g(\ell'+1)$ 开始的，所以
+
+$$
+\begin{cases} u'=g(\ell'+1)=uf_{\ell'-1}+vf_{\ell'}, \\ v'=g(\ell'+2)=uf_{\ell'}+vf_{\ell'+1}. \end{cases}
+$$
+
+```cpp
+struct Lazy {
+    int u, v;
+    Lazy() : u(0), v(0) {}
+    void Add() { u = 1; v = 1; }
+    void Unit() { u = v = 0; }
+};
+struct Tree {
+    int l, r;
+    int valu;
+    Lazy lazy;
+} tree[N << 2];
+void PushUp(int p) {
+    tree[p].valu = (tree[p << 1].valu + tree[p << 1 | 1].valu) % MOD;
+}
+void apply_lazy(int p, const Lazy& k) {
+    int L = tree[p].l, R = tree[p].r;
+    int len = R - L + 1;
+    long long delta = ((long long)k.u * fib[len] % MOD
+        + (long long)k.v * ((fib[len + 1] - 1 + MOD) % MOD) % MOD) % MOD;
+    tree[p].valu = (tree[p].valu + delta) % MOD;
+    tree[p].lazy.u = (tree[p].lazy.u + k.u) % MOD;
+    tree[p].lazy.v = (tree[p].lazy.v + k.v) % MOD;
+}
+void PushDown(int p) {
+    auto& lz = tree[p].lazy;
+    if (lz.u == 0 && lz.v == 0) return;
+    int L = tree[p].l, R = tree[p].r, mid = (L + R) >> 1;
+    apply_lazy(p << 1, lz);
+    int d = mid - L + 1;
+    Lazy k2;
+    k2.u = ((long long)lz.u * fib[d - 1] + (long long)lz.v * fib[d]) % MOD;
+    k2.v = ((long long)lz.u * fib[d] + (long long)lz.v * fib[d + 1]) % MOD;
+    apply_lazy(p << 1 | 1, k2);
+    lz.Unit();
+}
+/*====================*/
+void Change(int p, int L, int R) {
+    if (L <= tree[p].l && tree[p].r <= R) {
+        int d = tree[p].l - L + 1;
+        Lazy k;
+        k.u = fib[d];
+        k.v = fib[d + 1];
+        apply_lazy(p, k);
+    } else {
+        PushDown(p);
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (L <= mid)    Change(p << 1, L, R);
+        if (R > mid)    Change(p << 1 | 1, L, R);
+        PushUp(p);
+    }
+}
+```
+
+## [P1972 [SDOI2009] HH的项链](https://www.luogu.com.cn/problem/P1972)
+
+线段树难以维护区间数颜色问题，考虑升维，加一维偏序关系。
+
+记 (col, pre ) 表示颜色为 col 的点上一次出现在下标 pre 所在位置。我们将输入离线下来做二维数点，查询操作时一个点满足 $pre < l$ 才会产生贡献，也就是查询区间 $[l,r]$ 内有多少点的第二维小于 $l$。可以把问题继续转化：将一个点的 col 等信息用 pre 代替，虽然维数不变，但解决了多次贡献问题。查询区间 $[l,r]$ 内 pre 小于 $l$ 的点数量相当于用 pre 在 $[1,r]$ 内的点数量减去 $[1,l-1]$ 内的点数量。用权值线段树离线按 $l,r$ 扫描即可。
+
+```cpp
+	for (int i = 1; i <= m; i++)
+	{
+		cin >> q[i].l >> q[i].r;
+		q[i].id = i;
+	}
+	sort(q + 1, q + m + 1, [](Q a, Q b) {
+		return a.r < b.r;
+	});
+	Build(1, 1, n);
+	for (int i = 1; i <= n; i ++ )
+	{
+		pos[i] = tmp[a[i]];
+		tmp[a[i]] = i;
+	}
+	// 每次查询扫一遍 1-r[i]，如果有重复的元素，把它之前和它相同的元素标记成 0，这样最后计算就只会统计最后一次出现
+	int nowp = 1; 
+	for (int i = 1; i <= m; i ++ )
+	{
+		while (nowp <= q[i].r)
+		{
+			// 有重复元素 
+			if (pos[nowp])	Change(1, pos[nowp], 0);
+			Change(1, nowp, 1);
+			nowp ++;
+		}
+		ans[q[i].id] = Ask(1, 1, q[i].r) - Ask(1, 1, q[i].l - 1);
+		// 前缀和思想
+	}
+```
+
+## [P3332 [ZJOI2013] K大数查询](https://www.luogu.com.cn/problem/P3332)
+
+整体做法。将所有操作离线下来，对值域 $[-n,n]$ 进行二分答案 mid。遍历操作序列，将操作划分为左右两个子区间。
+
+- 对于修改操作 $(l, r, c)$，如果 $c > mid$， 该操作对于 $[l,r]$ 区间有贡献，区间 $[l,r]$ 整体加 $1$，划入右子区间中。否则直接划入左子区间。
+- 对于询问操作 $(l, r, c)$，查询区间和 $s(l,r)$，表示区间内有比当前答案 mid 大的数的个数。如果 $s(l,r) \geq c$，则右区间有至少 $s(l,r)$ 个比 mid 大的数，说明该询问操作的答案包含在右区间中；否则说明 mid 右边比它大的数不足 $c$ 个，也就是答案在左边，所以将询问的 $c$ 减去区间 $[l,r]$ 的贡献 $s(l,r)$，丢入左区间内继续递归。
+
+每次向下递归前把分开的左右子区间拼起来合到原操作序列上即可。
+
+需要注意的是，每次进入下一层递归前，需要把当前线段树上标记的贡献还原，否则会影响下一层二分。
+
+```cpp
+void solve1(int L, int R, int x, int y) {
+    if (L == R) {
+        for (int i = x; i <= y; i++)  if (q[i].op == 2) ans[q[i].d] = L;
+        return;
+    }
+    int mid = (L + R) >> 1;
+    int lcnt = 0, rcnt = 0;
+    for (int i = x; i <= y; i++) {
+        if (q[i].op == 1) {
+            if (mid < q[i].c) {
+                Change(1, q[i].l, q[i].r, 1); tr[++rcnt] = q[i];
+            } else { tl[++lcnt] = q[i]; }
+        } else {
+            int num = Ask(1, q[i].l, q[i].r);
+            if (q[i].c > num) {
+                q[i].c -= num; tl[++lcnt] = q[i];
+            } else { tr[++rcnt] = q[i]; }
+        }
+    }
+    for (int i = 1; i <= lcnt; i++)
+        q[x + i - 1] = tl[i];
+    for (int i = 1; i <= rcnt; i++)
+        q[x + i + lcnt - 1] = tr[i];
+    for (int i = 1; i <= rcnt; i++) { // 还原
+        if (tr[i].op == 1) Change(1, tr[i].l, tr[i].r, -1);
+    }
+    if (lcnt) solve1(L, mid, x, x + lcnt - 1);
+    if (rcnt) solve1(mid + 1, R, y - rcnt + 1, y);
+}
+/*====================*/
+void Solve() {
+    cin >> n >> m;
+    Build(1, 1, n);
+    for (int i = 1; i <= m; i++) {
+        int op; cin >> op; cin >> q[i].l >> q[i].r >> q[i].c;
+        if (op == 2) q[i].d = ++pos;
+        q[i].op = op;
+    }
+    solve1(-n, n, 1, m);
+    for (int i = 1; i <= pos; i++) cout << ans[i] << endl;
+    return;
+}
+```
+
+## [CF685B Kay and Snowflake](https://codeforces.com/problemset/problem/685/B)
+
+求每棵子树的重心。由性质“把两棵树通过一条边相连得到一棵新的树，那么新的树的重心在连接原来两棵树的重心的路径上”，我们在 dfs 过程中每次向上判断路径上的节点是否可以作为重心即可。
+
+```cpp
+int siz[N]; // 子树大小
+int wei[N]; // 节点重量（最大子树的大小）
+int ans[N]; // 子树重心
+void dfs(int u) {
+    ans[u] = u;
+    siz[u] = 1; wei[u] = 0;
+    for (auto i : g[u]) {
+        dfs(i);
+        siz[u] += siz[i];
+        wei[u] = max(wei[u], siz[i]);
+    }
+    for (auto i : g[u]) {
+        int p = ans[i];
+        while (p != u) {
+            if (max(wei[p], siz[u] - siz[p]) <= siz[u] / 2) {
+                ans[u] = p;
+                break;
+            } else {
+                p = fa[p];
+            }
+        }
+    }
+    return;
+}
+```
+
+## [P8969 幻梦 | Dream with Dynamic](https://www.luogu.com.cn/problem/P8969)
+
+数据结构好题。
+
+首先区间 $\operatorname{popcount}$ 操作不好维护，但我们注意到 $\operatorname{popcount}(x)$ 的值域只有 $\mathcal{O}(\log{V})$，也就是最多只有 $\log{V}$ 种数。
+
+区间修单点查考虑线段树，每个节点维护 $\operatorname{add}$ 操作的增量 sum 以及是否进行了 `P` 操作的标记，用 $p_{i=0 \sim \log{V}}$ 表示子区间当前值为 $i$ 时，将所在节点还未下传的操作作用后，$i$ 的值是多少。通过在节点上计算 $p_i=\operatorname{popcount}(p_i+\operatorname{add})$，我们将 $\operatorname{add}$ 和 $\operatorname{popcount}$ 操作合并到大小为 $\log{V}$ 的表上去，查询时无需递归到子节点，直接查表即可。
+
+具体来说，我们给一些节点打上标记，代表这些节点是一个”值域很小的连续段“。我们每次找出若干个需要被合并的连续段，暴力对每个值计算 $\operatorname{popcount}$，运用标记永久化的思想，修改操作过程中一路将未合并的 $\operatorname{add,popcount}$ 操作拆给所有子节点，然后把计算出来的置换 $p$ 固定在当前点上，并把这些计算过的连续段在树上的 LCA 标记一下，代表已经进行过合并，下次访问到此节点不再往下递归。
+
+这样每次花费 $\mathcal{O}(\log{V})$ 的代价合并一个节点，并且不会重复向下递归，操作时间复杂度均摊可以做到 $\mathcal{O}(\log{n}\log{V})$。
+
+```cpp
+struct Tree {
+    int l, r;
+    bool f; // flag
+    int sum; // add 操作
+    int per[55]; // popcount 操作
+} tree[N << 2];
+int ls(int p) { return p << 1; }
+int rs(int p) { return p << 1 | 1; }
+void PushDown(int p) {
+    if (tree[p].f) {
+        for (int i = 0; i <= 50; i++) {
+            tree[ls(p)].per[i] = tree[p].per[tree[ls(p)].per[i]];
+            tree[rs(p)].per[i] = tree[p].per[tree[rs(p)].per[i]];
+        }
+        for (int i = 0; i <= 50; i++) {
+            tree[p].per[i] = i;
+        }
+        tree[ls(p)].f = tree[rs(p)].f = 1;
+        tree[p].f = 0;
+    }
+    if (tree[p].sum) {
+        tree[ls(p)].sum += tree[p].sum;
+        tree[rs(p)].sum += tree[p].sum;
+        tree[p].sum = 0;
+    }
+}
+void Build(int p, int l, int r) {
+    tree[p].l = l;
+    tree[p].r = r;
+    for (int i = 0; i <= 50; ++i)
+        tree[p].per[i] = i;
+    tree[p].f = 0; tree[p].sum = 0;
+    if (l == r) {
+        tree[p].f = 1;
+        tree[p].sum = a[l];
+        return;
+    }
+    int mid = (l + r) >> 1;
+    Build(ls(p), l, mid);
+    Build(rs(p), mid + 1, r);
+}
+
+void Update1(int p, int l, int r, int x) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        tree[p].sum += x;
+    } else {
+        PushDown(p);
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid) Update1(ls(p), l, r, x);
+        if (r > mid) Update1(rs(p), l, r, x);
+    }
+}
+void upd(int p) {
+    if (tree[p].f) {
+        for (int i = 0; i <= 50; i++) {
+            tree[p].per[i] = __builtin_popcountll(tree[p].per[i] + tree[p].sum);
+        }
+        tree[p].sum = 0;
+    } else {
+        PushDown(p);
+        upd(ls(p)); upd(rs(p));
+    }
+}
+void Update2(int p, int l, int r) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        upd(p); // 标记永久化思想
+        tree[p].f = 1;
+    } else {
+        PushDown(p);
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid) Update2(ls(p), l, r);
+        if (r > mid) Update2(rs(p), l, r);
+    }
+}
+int Ask(int p, int k) {
+    if (tree[p].l == tree[p].r) {
+        return tree[p].sum + tree[p].per[0];
+    } else {
+        int res = 0;
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (tree[p].f) {
+            if (k <= mid)res += tree[p].per[Ask(ls(p), k)] + tree[p].sum;
+            if (mid < k) res += tree[p].per[Ask(rs(p), k)] + tree[p].sum;
+        } else {
+            if (k <= mid) res += Ask(ls(p), k) + tree[p].sum;
+            if (mid < k) res += Ask(rs(p), k) + tree[p].sum;
+        }
+        return res;
+    }
+}
+```
+
+## [CF1091D New Year and the Permutation Concatenation](https://codeforces.com/problemset/problem/1091/D)
+
+首先不难发现，满足子数组 $s$ 长度为 $n$ 并且 $\sum s_i = \frac{n(n+1)}{2}$，则该子数组一定完整地取完 $1\sim n$。
+
+并且对于一段合法的子数组 $s$，一定只有两种情况：
+
+- $s$ 是一个 $1\sim n$ 的完整排列
+- 存在 $k \in [1,n)$ 使得 $s$ 是由前一个排列的后 $k$ 为和下一个排列的前 $n-k$ 位拼接而成
+
+有推论：
+
+> 对于一个子数组 $s$，若其元素和不等于 $\frac{n(n+1)}{2}$，当且仅当 $s$ 是由两段排列组成，且左边排列是**降序**的。
+
+对于第一类 $s$，答案是 $n!$。
+
+分析第二类 $s$，我们可以枚举分割点 $k$，然后左部分可能的方案数为 $$A^{k}_{n}$$，在左边被选出的 $k$ 个数中，仅有 $1$ 种顺序使得这 $k$ 个数是降序的，所以降序的方案数为 $$C^{k}_{n}$$。所以左边合法方案数就是 $$A^{k}_{n} - C^{k}_{n}$$，最后右边合法方案数就是取不重复的剩下 $n-k$ 个数，方案数为 $(n-k)!$。
+
+整理答案得 $$n! + \sum\limits_{k=1}^{n-1}(A^{k}_{n}-C^{k}_{n})\times (n-k)!$$。
+
+```cpp
+int qpow(int a, int b) {
+    int res = 1;
+    while (b) {
+        if (b & 1) (res = res * a % MOD) %= MOD;
+        (a = a * a % MOD) %= MOD;
+        b >>= 1;
+    }
+    return res % MOD;
+}
+int A(int m, int n) {
+    return f[n] * qpow(f[n - m], MOD - 2) % MOD;
+}
+int C(int m, int n) {
+    return A(m, n) * qpow(f[m], MOD - 2) % MOD;
+}
+/*====================*/
+void Solve() {
+    cin >> n;
+    f[1] = 1;
+    for (int i = 2; i <= n; i++) {
+        f[i] = (f[i - 1] * i) % MOD;
+    }
+    ans = 0;
+    int sum0 = max(n - 2, 0ll), sum1 = max(n - 3, 0ll);
+    if (n <= 3) {
+        if (n == 1)  cout << 1 << endl;
+        else if (n == 2) cout << 2 << endl;
+        else if (n == 3) cout << 9 << endl;
+        return;
+    } else {
+        ans += f[n] % MOD;
+        int sum = 0;
+        for (int k = 1; k < n; k++) {
+            (sum += (A(k, n) - C(k, n) + MOD) % MOD * f[n - k] % MOD) %= MOD;
+        }
+        ans = (ans + sum) % MOD;
+        cout << ans % MOD << endl;
+    }
+    return;
+}
+```
+
+
+
+## [P6892 [ICPC 2014 WF] Baggage](https://www.luogu.com.cn/problem/P6892)
+
+构造题。
+
+首先我们知道达到终态需要满足相邻元素相同的对数为 $2\times(n-1)$，初态为 $0$ 对，操作过程中除第一次操作外（$1$ 对）其余每次最多产生 $2$ 对，所以答案的下界为 $n$。考虑如何构造达到下界的方案。
+
+先手模样例，以 $n=8$ 为例，按如下步骤置换：
+
+$$
+\begin{array}{c}
+\texttt{\textcolor{blue}{\_\_}BABABABABABABABA}\\
+\texttt{\textcolor{red}{AB}BABABABABABAB\textcolor{blue}{\_\_}A}\\
+\texttt{ABBA\textcolor{blue}{\_\_}BABABABAB\textcolor{red}{BA}A}\\
+\end{array}
+$$
+
+此时，中间的 $$\texttt{\textcolor{blue}{\_\_}BABABABA}$$ 变成了一个类似的子问题，长度为 $n-4$。我们继续往下递归，直到中间部分有序：
+
+$$
+\texttt{ABBA\textcolor{red}{AAAABBBB}\textcolor{blue}{\_\_}BBAA}
+$$
+
+继续构造。
+
+$$
+\begin{array}{c}
+\texttt{A\textcolor{blue}{\_\_}AAAAABBBB\textcolor{red}{BB}BBAA}\\
+\texttt{A\textcolor{red}{AA}AAAAABBBBBBBB\textcolor{blue}{\_\_}}\\
+\end{array}
+$$
+
+可以从上例中发现一个更为通用的解法：
+
+$$
+\begin{array}{c}
+\texttt{\_\_BA|BA...BA|BABA}\\
+\texttt{\textcolor{red}{AB}BA|BA...BA|B\textcolor{blue}{\_\_}A}\\
+\texttt{ABBA|\textcolor{blue}{\_\_}...BA|B\textcolor{red}{BA}A}\\
+...\\
+\texttt{ABBA|AAAA...BB\textcolor{blue}{\_\_}|BBAA}\\
+\texttt{A\textcolor{blue}{\_\_}A|AAAA...BB\textcolor{red}{BB}|BBAA}\\
+\texttt{A\textcolor{red}{AA}A|AAAA...BBBB|BB\textcolor{blue}{\_\_}}\\
+\end{array}
+$$
+
+考虑 $n=3$ 的情况，模拟可以发现，我们无法在左侧拓展 $2$ 格的条件下完成转移，特判一下即可。
+
+初始时有 $2n$ 个位置，我们每次递归需要隔离出 $8$ 个位置，我们要保证下一次递归序列有效需满足 $2n-8\ge8,n\ge8$。如果 $n \in [3,7]$，则 $n-4\le3$ 方案对此序列无效。所以对于 $n\ge 8$ 的序列进行递归操作，$3\le n \le 7$ 的序列直接打表输出方案即可。
+
+```cpp
+void work(int l, int r) {
+    if (r - l + 1 == 8) {
+        cout << r - 2 << " to " << l - 2 << endl;
+        cout << l + 2 << " to " << r - 2 << endl;
+        cout << l - 1 << " to " << l + 2 << endl;
+        cout << r - 1 << " to " << l - 1 << endl;
+    } else if (r - l + 1 == 10) {
+        cout << r - 2 << " to " << l - 2 << endl;
+        cout << l + 2 << " to " << r - 2 << endl;
+        cout << r - 4 << " to " << l + 2 << endl;
+        cout << l - 1 << " to " << r - 4 << endl;
+        cout << r - 1 << " to " << l - 1 << endl;
+    } else if (r - l + 1 == 12) {
+        cout << r - 2 << " to " << l - 2 << endl;
+        cout << r - 5 << " to " << r - 2 << endl;
+        cout << l + 1 << " to " << r - 5 << endl;
+        cout << r - 6 << " to " << l + 1 << endl;
+        cout << l - 1 << " to " << r - 6 << endl;
+        cout << r - 1 << " to " << l - 1 << endl;
+    } else if (r - l + 1 == 14) {
+        cout << l + 7 << " to " << l - 2 << endl;
+        cout << l + 4 << " to " << l + 7 << endl;
+        cout << r - 2 << " to " << l + 4 << endl;
+        cout << l + 2 << " to " << r - 2 << endl;
+        cout << r - 5 << " to " << l + 2 << endl;
+        cout << l - 1 << " to " << r - 5 << endl;
+        cout << r - 1 << " to " << l - 1 << endl;
+    } else {
+        cout << r - 2 << " to " << l - 2 << endl;
+        cout << l + 2 << " to " << r - 2 << endl;
+        work(l + 4, r - 4);
+        cout << l - 1 << " to " << r - 5 << endl;
+        cout << r - 1 << " to " << l - 1 << endl;
+    }
+    return;
+}
+/*====================*/
+void Solve() {
+    cin >> n;
+    if (n == 3) {
+        cout << "2 to -1\n" << "5 to 2\n" << "3 to -3\n";
+    } else {
+        work(1, 2 * n);
+    }
+    return;
+}
+```
+
+## [Gym105887L & CQCPC 2025 L](https://vjudge.net/problem/Gym-105887L)
+
+$\operatorname{Repert}$ 操作等效于将栈复制一份放在上面，我们只需要模拟这个操作即可。
+
+考虑到最多只有 $n$ 个操作，所以当栈大小超过 $n$ 时，除了栈顶的 $n$ 个元素，其余元素都不会被操作到，对于这种情况就不需要进行复制操作了，维护栈内元素和即可。
+
+```cpp
+void Solve() {
+    cin >> n;
+    while (n--) {
+        string op; cin >> op;
+        if (op == "Push") {
+            int x; cin >> x;
+            s.push(x);
+            sum += x;
+            sum %= MOD;
+        } else if (op == "Pop") {
+            int tmp = s.top();
+            s.pop();
+            sum -= tmp;
+            if (sum < 0) sum += MOD;
+            sum %= MOD;
+        } else if (op == "Repeat") {
+            if (s.size() <= 1 + n) {
+                stack<int> t(s);
+                vector<int> ve;
+                while (!t.empty()) {
+                    int tmp = t.top();
+                    t.pop();
+                    ve.push_back(tmp);
+                }
+                reverse(ve.begin(), ve.end());
+                for (auto i : ve) {
+                    s.push(i);
+                }
+            }
+            sum = sum * 2 % MOD;
+        }
+        cout << sum % MOD << endl;
+    }
+    return;
+}
+```
+
+## P5278 算术天才⑨与等差数列
+
+首先考虑等差数列性质。一段区间 $[l,r]$ 排序后记为 $a$，当且仅当 $a$ 满足如下条件时，称 $a$ 为公差为 $d$ 的等差数列。
+
+- $\max{a_i}=\min{a_i} + d\times (r-l+1)$
+- $\gcd\limits_{i=l+1}^{r}{a_i-a_{i-1}} = d$
+- $a$ 中无重复元素
+
+对于前两个条件，我们可以用两棵线段树分别维护序列 $a$ 的区间最值和 $a$ 的差分序列的区间 $\gcd$。
+
+对于第三个条件，可以在线段树上维护序列每个元素的前驱（上次出现的位置）， 操作 $2$ 查询一下前驱的区间最大值，如果最大值不小于 $l$，则 $[l,r]$ 区间内某个值有重复。反之无重复。
+
+操作 $1$ 单点修改时，二分查询一下 $a_x$ 在 $x$ 后下一次出现的位置 $nxt$，将 $nxt$ 的前驱更新成 $x$ 的前驱。最后把新值 $y$ 更新到序列中，并同步更新 $y$ 对应相邻位置的前驱即可。
+
+需要注意本题空间限制以及公差为 $0$ 的情况。
+
+```cpp
+int n, m;
+int a[N];
+int lst[N];
+map<int, set<int> > pos;
+/*====================*/
+struct Ans {
+    int maxv, minv;
+    LL sum;
+};
+struct Tree {
+    int l, r;
+    int val, maxv, minv;
+    LL maxl;
+} tree[N << 2];
+int ls(int p) { return p << 1; }
+int rs(int p) { return p << 1 | 1; }
+void PushUp(int p) {
+    tree[p].val = tree[ls(p)].val + tree[rs(p)].val;
+    tree[p].maxv = max(tree[ls(p)].maxv, tree[rs(p)].maxv);
+    tree[p].maxl = max(tree[ls(p)].maxl, tree[rs(p)].maxl);
+    tree[p].minv = min(tree[ls(p)].minv, tree[rs(p)].minv);
+}
+void Build(int p, int l, int r) {
+    tree[p].l = l, tree[p].r = r;
+    if (l == r) {
+        tree[p].maxv = tree[p].minv = tree[p].val = a[l];
+        tree[p].maxl = lst[l];
+    } else {
+        int mid = (l + r) >> 1;
+        Build(ls(p), l + 0, mid);
+        Build(rs(p), mid + 1, r);
+        PushUp(p);
+    }
+}
+void Change(int p, int x, int d) {
+    if (tree[p].l == tree[p].r) {
+        tree[p].maxv = tree[p].minv = tree[p].val = d;
+    } else {
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (x <= mid)Change(ls(p), x, d);
+        if (mid < x) Change(rs(p), x, d);
+        PushUp(p);
+    }
+}
+void pChange(int p, int x) {
+    if (tree[p].l == tree[p].r) {
+        tree[p].maxl = lst[x];
+    } else {
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (x <= mid)pChange(ls(p), x);
+        if (mid < x) pChange(rs(p), x);
+        PushUp(p);
+    }
+}
+Ans Ask(int p, int l, int r) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        return (Ans) { tree[p].maxv, tree[p].minv, tree[p].val };
+    } else {
+        int resmx = -1, resmi = inf;
+        LL res = 0;
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid) {
+            Ans ans = Ask(ls(p), l, r);
+            resmx = max(resmx, ans.maxv);
+            resmi = min(resmi, ans.minv);
+            res += ans.sum;
+        }
+        if (mid < r) {
+            Ans ans = Ask(rs(p), l, r);
+            resmx = max(resmx, ans.maxv);
+            resmi = min(resmi, ans.minv);
+            res += ans.sum;
+        }
+        return { resmx, resmi, res };
+    }
+}
+int pAsk(int p, int l, int r) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        return tree[p].maxl;
+    } else {
+        int res = -inf;
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid) {
+            res = max(res, pAsk(ls(p), l, r));
+        }
+        if (mid < r) {
+            res = max(res, pAsk(rs(p), l, r));
+
+        }
+        return res;
+    }
+}
+/*====================*/
+int c[N];
+struct gcdTree {
+    int l, r;
+    int gd;
+} ct[N << 2];
+void cPushUp(int p) {
+    ct[p].gd = __gcd(ct[ls(p)].gd, ct[rs(p)].gd);
+}
+void cBuild(int p, int l, int r) {
+    ct[p].l = l, ct[p].r = r;
+    if (l == r) {
+        ct[p].gd = c[l];
+    } else {
+        int mid = (l + r) >> 1;
+        cBuild(ls(p), l + 0, mid);
+        cBuild(rs(p), mid + 1, r);
+        cPushUp(p);
+    }
+}
+void cChange(int p, int x) {
+    if (ct[p].l == ct[p].r) {
+        ct[p].gd = c[x];
+    } else {
+        int mid = (ct[p].l + ct[p].r) >> 1;
+        if (x <= mid)cChange(ls(p), x);
+        if (mid < x) cChange(rs(p), x);
+        cPushUp(p);
+    }
+}
+int cAsk(int p, int l, int r) {
+    if (l <= ct[p].l && ct[p].r <= r) {
+        return ct[p].gd;
+    } else {
+        int res = 0;
+        int mid = (ct[p].l + ct[p].r) >> 1;
+        if (l <= mid)res = __gcd(res, cAsk(ls(p), l, r));
+        if (mid < r) res = __gcd(res, cAsk(rs(p), l, r));
+        return res;
+    }
+}
+/*====================*/
+void Solve() {
+    cin >> n >> m;
+    for (int i = 1; i <= n; i++) {
+        cin >> a[i];
+    }
+    for (int i = 1; i <= n; i++) {
+        c[i] = abs(a[i] - a[i - 1]);
+    }
+    memset(lst, -1, sizeof lst);
+    for (int i = 1; i <= n; i++) {
+        if (pos[a[i]].size()) lst[i] = *(--pos[a[i]].end());
+        pos[a[i]].insert(i);
+    }
+    // for (int i = 1; i <= n; i++) {
+    //     cout << lst[i] << " ";
+    // }
+    Build(1, 1, n);
+    cBuild(1, 1, n - 1);
+    int cntyes = 0;
+    // a[i]-a[i-1];
+    // y-a[i-1];
+    while (m--) {
+        int op; cin >> op;
+        if (op == 1) {
+            int x, y; cin >> x >> y;
+            x ^= cntyes, y ^= cntyes;
+            // cout << x << " " << y << "";
+            // assert(x >= 1 && x <= n);
+            auto it = pos[a[x]].find(x);
+            if (it != pos[a[x]].end()) {
+                ++it;
+                lst[*it] = lst[x];
+                pChange(1, *it);
+            }
+            if (pos[a[x]].size())
+                pos[a[x]].erase(x);
+            a[x] = y;
+            it = pos[y].lower_bound(x);
+            if (it != pos[y].end()) {
+                lst[*it] = x;
+                pChange(1, *it);
+            }
+            if (it == pos[y].begin()) {
+                lst[x] = -1;
+                pChange(1, x);
+            } else {
+                it--;
+                lst[x] = *it;
+                pChange(1, x);
+                // pos[y].insert(x);
+            }
+            Change(1, x, y);
+            c[x] = abs(y - a[x - 1]);
+            pos[y].insert(x);
+            cChange(1, x);
+            if (x + 1 <= n) {
+                c[x + 1] = abs(a[x + 1] - y);
+                cChange(1, x + 1);
+            }
+        } else {
+            int l, r, k; cin >> l >> r >> k;
+            l ^= cntyes, r ^= cntyes, k ^= cntyes;
+            // cout << l << " " << r << " " << k << "@";
+            // assert(l >= 1 && l <= n); assert(r >= 1 && r <= n); assert(l <= r);
+            if (r - l + 1 == 1) {
+                cout << "Yes" << endl;
+                cntyes++;
+                continue;
+            }
+            auto [maxx, minn, sum] = Ask(1, l, r);
+            if (k == 0) {
+                cout << (maxx == minn ? "Yes" : "No") << endl;
+                if (maxx == minn) cntyes++;
+                continue;
+            }
+            if (maxx - minn != k * (r - l)) {
+                cout << "No" << endl;
+                continue;
+            }
+            if (cAsk(1, l + 1, r) != k) {
+                cout << "No" << endl;
+                continue;
+            }
+            if (pAsk(1, l, r) >= l) {
+                cout << "No" << endl;
+                continue;
+            }
+            cout << "Yes" << endl;
+            cntyes++;
+        }
+    }
+    return;
+}
+```
+
+## [ZR3284 比赛](https://zhengruioi.com/problem/3284)
+
+通过手模样例不难发现，我们只需要找到答案的两个极值，区间内所有值都能构造出来。
+
+首先每个小节胜方分数为 $M$，败方分数为 $2M-1$，假设有 $s$ 个小节，则有 
+
+$$
+s\times M \le X+Y \le s\times(2M-1) \Rightarrow \lceil \frac{X+Y}{2M-1} \rceil \le s \le \lfloor \frac{X+Y}{M} \rfloor
+$$
+又因为胜场每场最多得 $M$ 分，则有下界 $s \ge \lceil \frac{X}{M} \rceil, s \ge \lceil \frac{Y}{M} \rceil$。
+
+A,B 两人最多胜场数分别为 $\lfloor \frac{X}{M} \rfloor, \lfloor \frac{Y}{M} \rfloor$，则有上界 $s \le \lfloor \frac{X}{M} \rfloor + \lfloor \frac{Y}{M} \rfloor$。
+
+则答案上下界有：$L=\max \{\lceil \frac{X+Y}{2M-1} \rceil, \lceil \frac{X}{M} \rceil, \lceil \frac{Y}{M} \rceil\}, R=\min \{ \lfloor \frac{X+Y}{M} \rfloor, \lfloor \frac{X}{M} \rfloor + \lfloor \frac{Y}{M} \rfloor \}$
+
+答案 $s$ 即为 $\max\{R-L+1, 0\}$。需要特殊考虑 $0$ 的情况。
+
+```cpp
+long long solve_(long long X, long long Y, long long M) {
+    if (X == 0 && Y == 0) {
+        return 1;
+    }
+    if (X == 0 || Y == 0) {
+        return max(X, Y) % M == 0;
+    }
+    __int128 minn = (__int128)(X + Y - 1) / (M * 2 - 1) + 1;
+    __int128 maxx = (__int128)((X + Y) / M);
+    minn = max(minn, (__int128)(X / M + (X % M > 0)));
+    minn = max(minn, (__int128)(Y / M + (Y % M > 0)));
+    maxx = min(maxx, (__int128)(X / M + Y / M));
+    __int128 ans = (maxx >= minn) ? (maxx - minn + 1) : 0;
+    return (unsigned long long)ans;
+}
+```
+
+## [ZR3285 三目运算符](https://zhengruioi.com/problem/3285)
+
+类比括号序列，考虑用栈/模拟栈来处理。我们记三目运算符为 $\texttt{a?b:c}$。
+
+首先从特殊性质 B 入手，因为三目运算符右结合的特点，我们倒序遍历，每次将非运算符元素压入栈中，直到遇到 $\texttt{?}$ 为止。取出栈顶两个元素（相当于 $\texttt{b}$ 和 $\texttt{c}$），与 $\texttt{?}$ 前的元素（相当于 $\texttt{a}$）进行运算，将结果压入栈中，重复此操作，最后栈中剩余一个元素即为答案。
+
+考虑如何计算 `x` 的贡献。可以将问题转化为：
+
+- 给定一棵二叉树，每个节点是 `0`、`1`、`x` 中的一个，每个节点有 $0$ 或 $2$ 个儿子。
+- 将所有 `x` 替换为 `0` 或 `1`，然后从根往下走，如果是 `0` 就走左儿子，是 `1` 就走右儿子。
+- 走到叶子时，叶子的值就是该表达式的值。
+
+记二元组 $S=(v, k)$ 表示子树 $S$ 内部有 $k$ 个 `x`，其中 `x` 的所有 $2^k$ 种赋值中有 $v$ 种方案使得最终答案（叶子取值）为 $1$。叶子节点取值有：$f(\texttt{0})=(0,0), f(\texttt{1})=(1,0), f(\texttt{x})=(1,1)$。
+
+有如下路径（分别记 $\texttt{b,c}$ 为 $\texttt{L,R}$）：
+
+- `a` 为 `1` 走左子树，有 $v=v_L \cdot 2^{k_R}, k=k_L+k_R$ ;
+- `a` 为 `0` 走右子树，有 $v=v_R \cdot 2^{k_L}, k=k_L+k_R$ ;
+- `a` 为 `x`，有 $v=v_L \cdot 2^{k_R} + v_R \cdot 2^{k_L}, k=k_L+k_R$ .
+
+栈内最后剩下的一个二元组即为答案。
+
+```cpp
+int n;
+string s;
+int pw[N];
+/*====================*/
+void Solve() {
+    pw[0] = 1;
+    for (int i = 1; i <= N - 5; i++) pw[i] = pw[i - 1] * 2 % MOD;
+    cin >> n >> s;
+    bool f = 1, g = 1;
+    for (auto i : s) {
+        if (i == 'x') f = 0;
+    }
+    for (int i = 1; i <= n / 4; i++) { if (s[4 * i - 3] != '?' || s[4 * i - 1] != ':') g = 0; }
+    if (f) {
+        vector<int> st;
+        st.reserve(n);
+        for (int i = n - 1; i >= 0;) {
+            char tmp = s[i];
+            if (tmp == ':') {
+                i--;
+                continue;
+            }
+            if (tmp == '?') {
+                int c1 = st.back(); st.pop_back();
+                int c2 = st.back(); st.pop_back();
+                i--; char t = s[i];
+                st.push_back(t == '1' ? c1 : c2);
+                i--;
+            } else {
+                st.push_back(tmp == '1');
+                i--;
+            }
+        }
+        cout << st.back() % MOD << endl;
+        return;
+    }
+    {
+        vector<PII> st; // { ans, x_count }
+        st.reserve(n);
+        for (int i = n - 1; i >= 0;) {
+            if (s[i] == ':') {
+                i--;
+                continue;
+            }
+            // a ? b : c
+            if (s[i] == '?') {
+                PII c1 = st.back(); st.pop_back(); // b
+                PII c2 = st.back(); st.pop_back(); // c
+                i--;
+                PII a;
+                if (s[i] == '0') a = { 0, 0 };
+                else if (s[i] == '1') a = { 1, 0 };
+                else a = { 1, 1 };
+                int t1 = 0;
+                int t2 = 0;
+                if (s[i] != '1') // c
+                    t2 = c2.first % MOD * pw[c1.second] % MOD;
+                if (s[i] != '0') // b
+                    t1 = c1.first % MOD * pw[c2.second] % MOD;
+                st.push_back({ ((t1 + t2) % MOD), a.second + c1.second + c2.second });
+                i--;
+            } else {
+                if (s[i] == '0')  st.push_back({ 0, 0 });
+                else if (s[i] == '1') st.push_back({ 1, 0 });
+                else st.push_back({ 1, 1 });
+                i--;
+            }
+        }
+        cout << st.back().first % MOD << endl;
+        return;
+    }
+    return;
+}
+```
+
+## [Gym100753M Sums](https://vjudge.net/problem/Gym-100753M)
+
+同余最短路。
+
+把所有可以取到的和按模数分为若干个同余类（这里选 $a_1$ 当作模数），在上面跑最短路，得到每个同余类能达到的最小和 $d_r$，这样所有同余于 $r$ 且大于 $d_r$ 的数都可达。查询答案时判一下是否 $x \ge d_{x \% m}$ 即可。
+
+```cpp
+int n;
+int a[N];
+int q;
+int dis[N];
+int mi = inf;
+bool inq[N]; // inqueue[u] 表示 u 是否在队列中
+vector<int> r;
+/*====================*/
+void spfa(int m) {
+    memset(dis, inf, sizeof dis);
+    queue<int> q;
+    q.push(0);
+    dis[0] = 0;
+    inq[0] = 1;
+    while (!q.empty()) {
+        int f = q.front(); q.pop();
+        inq[f] = 0;
+        for (int i = 1; i <= n; i++) {
+            int v = (f + a[i]) % m;
+            if (dis[f] + a[i] < dis[v]) {
+                dis[v] = dis[f] + a[i];
+                if (!inq[v]) {
+                    inq[v] = 1;
+                    q.push(v);
+                }
+            }
+        }
+    }
+}
+/*====================*/
+void Solve() {
+    cin >> n;
+    int gd = 0;
+    for (int i = 1; i <= n; i++) {
+        cin >> a[i];
+    }
+    for (int i = 1; i <= n; i++) {
+        mi = min(mi, a[i]);
+    }
+    if (mi == 1) {
+        cin >> q;
+        while (q--) {
+            int x; cin >> x;
+            cout << "TAK\n" << endl;
+        }
+        return;
+    }
+    memset(dis, inf, sizeof dis);
+    spfa(a[1]);
+    cin >> q;
+    while (q--) {
+        int x; cin >> x;
+        if (x < dis[x % a[1]]) cout << "NIE" << endl;
+        else cout << "TAK" << endl; // x >= dis[x % m] 表示可达
+    }
+    return;
+}
+```
+
+## [SGU298 King Berl VI](https://vjudge.net/problem/SGU-298)
+
+题意：加上了限制 $\|A_i\|\le 10000$ ，和要求最小化 $A_n-A_1$ 。 $n\le10000,m\le 10^5$ ，限制形如 $a_x\ge a_y+c$ 其中 $0\le c\le 1000$ 。
+
+差分约束好题。
+
+条件 $a_x \ge a_y + c$ 可以转化为 $a_y - a_x \le -c$，在图上加一条 $x$ 到 $y$ 权值为 $-c$ 的边。
+
+对这张图以及它的**反图**跑 $\operatorname{spfa}$，反图相当于进行了一遍 $a_x-a_y \le -c \Rightarrow (-a_y) - (-a_x) \le -c$，所以 $rdis_{i}$ 是 $-a_i$ 的最小上界，$-rdis_i$ 也就是 $a_i$ 的最大下界。初始化正反图答案数组 $\texttt{dis}$ 和 $\texttt{rdis}$ 为 $10000$，这样每次会将答案在 $10000$ 以内约束，一正一反求出的答案包含在 $[-10000,10000]$ 内，隐式地解决掉一个条件。
+
+目标要最小化 $a_n$，经过这两次 $\operatorname{spfa}$，我们得到了 $a_n$ 的上下界，将 $dis_n \gets rdis_n$（把下界赋值给上界，找到最小的 $a_n$；在差分约束中，固定一点最小，即剩余变量尽可能大），在原图上再跑一遍 $\operatorname{spfa}$，得到的答案满足 $a_n - a_1$ 最小化。
+
+```cpp
+int n, m; 
+vector<PII> g[N];
+vector<PII> rg[N];
+int cnt[N], dis[N], rdis[N];
+bool inq[N];
+/*====================*/
+bool spfa(vector<PII>* gra, int d[]) {
+    queue<int> q;
+    for (int i = 1; i <= n; i++) {
+        inq[i] = 1; cnt[i] = 0; q.push(i);
+    }
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        inq[u] = 0;
+        for (auto [v, w] : gra[u]) {
+            if (d[v] > d[u] + w) {
+                d[v] = d[u] + w;
+                if (!inq[v]) {
+                    inq[v] = 1;
+                    cnt[v]++;
+                    q.push(v);
+                    if (cnt[v] > n) return 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
+/*====================*/
+void Solve() {
+    cin >> n >> m;
+    // for (int i = 1; i <= n; i++) g[0].push_back({ i, 0 });
+    for (int i = 1; i <= m; i++) {
+        int  x, y, c;
+        cin >> x >> y >> c; // x >= y + c -> x - y >= c -> y - x <= -c
+        g[x].push_back({ y, -c }); // y - x <= -c
+        rg[y].push_back({ x, -c }); // x - y <= -c -> y - x >= c
+    }
+    // for (int i = 1; i <= n; i++) {
+    //     g[0].push_back({ i, 10000 });
+    //     g[i].push_back({ 0, 10000 });
+    //     rg[0].push_back({ i, 10000 });
+    //     rg[i].push_back({ 0, 10000 });
+    // }
+    for (int i = 0; i <= n; i++) dis[i] = rdis[i] = 10000;
+    if (!spfa(g, dis)) {
+        cout << -1 << endl;
+        return;
+    }
+    if (!spfa(rg, rdis)) {
+        cout << -1 << endl;
+        return;
+    }
+    for (int i = 1; i <= n; i++) {
+        if (dis[i] < -rdis[i]) {
+            cout << -1 << endl;
+            return;
+        }
+    }
+    dis[n] = -rdis[n];
+    spfa(g, dis);
+    for (int i = 1; i <= n; i++) {
+        cout << dis[i] << " ";
+    }
+    return;
+}
+```
+
+## [P7453 [THUSC 2017] 大魔法师](https://www.luogu.com.cn/problem/P7453)
+
+矩阵线段树板子。
+
+设懒标记矩阵为 lazy，数值矩阵 valu。
+
+其中 valu 大小为 $4\times 1$，分别存的是 $\{A_i,B_i,C_i,len\}$。
+
+初始化节点懒标记为单位矩阵，每次操作乘上懒标记矩阵即可。
+
+为方便转移，我们钦定转移顺序为 `valu = _lazy * valu, lazy = _lazy * lazy`，其中 _lazy 为需要更新的懒标记。
+
+对于 $1\sim 6$ 操作分别构造转移矩阵即可。
+
+这里给出一个操作 5 的例子：
+$$
+\begin{pmatrix}
+  1&  0&  0&0 \\
+  0&  1&  0&v\\
+  0&  0&  1&0\\
+  0&  0&  0&1
+\end{pmatrix}
+\times
+\begin{pmatrix}
+  A_i \\
+  B_i\\
+  C_i\\
+  len
+\end{pmatrix}
+=
+\begin{pmatrix}
+  A_i \\
+  B_i+len\times v\\
+  C_i\\
+  len
+\end{pmatrix}
+$$
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+/*====================*/
+#define ios_close ios::sync_with_stdio(false), cin.tie(NULL), cout.tie(NULL)
+#define yes puts("Yes")
+#define no puts("No")
+#define lowbit(x) ((x) & (-x))
+#define inf 0x3f3f3f3f
+#define endl "\n"
+#define PII pair<int, int>
+// typedef long long LL;
+#define int long long 
+/*====================*/
+const int MOD = 998244353;
+const int N = 3e5 + 10;
+/*====================*/
+int n, m;
+int a[N], b[N], c[N];
+struct Ans {
+    int a, b, c;
+    Ans(int _a = 0, int _b = 0, int _c = 0) {
+        a = _a; b = _b; c = _c;
+    }
+    friend Ans operator+(Ans x, Ans y) {
+        Ans z;
+        z.a = x.a + y.a; z.b = x.b + y.b; z.c = x.c + y.c;
+        return z;
+    }
+};
+struct MatrixLazy {
+    int M[5][5];
+    MatrixLazy() {
+        memset(M, 0, sizeof M);
+    }
+    void Unit() {
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void Add1() { // a = a + b
+        M[1][1] = 1; M[1][2] = 1; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void Add2() { // b = b + c
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 1; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void Add3() { // c = c + a
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 1; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void AddA(int d) { // a = a + v
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = d;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void MulB(int d) { // b = b * v
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = d; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void CovC(int v) { // c = v
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 0; M[3][4] = v;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    friend MatrixLazy operator*(MatrixLazy& a, MatrixLazy& b) {
+        MatrixLazy c;
+        for (int i = 1; i <= 4; i++) {
+            for (int j = 1; j <= 4; j++) {
+                for (int k = 1; k <= 4; k++) {
+                    (c.M[i][j] += (a.M[i][k] * b.M[k][j]) % MOD) %= MOD;
+                }
+            }
+        }
+        return c;
+    }
+};
+struct MatrixValu {
+    int M[5][2]; // a b c len
+    MatrixValu() {
+        memset(M, 0, sizeof M);
+    }
+    friend MatrixValu operator+(MatrixValu& a, MatrixValu& b) {
+        MatrixValu c;
+        for (int i = 1; i <= 4; i++) {
+            for (int j = 1; j <= 1; j++) {
+                c.M[i][j] = (a.M[i][j] + b.M[i][j]) % MOD;
+            }
+        }
+        return c;
+    }
+    friend MatrixValu operator*(MatrixLazy& a, MatrixValu& b) {
+        MatrixValu c;
+        for (int i = 1; i <= 4; i++) {
+            for (int j = 1; j <= 1; j++) {
+                for (int k = 1; k <= 4; k++) {
+                    (c.M[i][j] += (a.M[i][k] * b.M[k][j]) % MOD) %= MOD;
+                }
+            }
+        }
+        return c;
+    }
+};
+struct Tree {
+    int l, r;
+    MatrixLazy lazy;
+    MatrixValu valu;
+    void Maintain(MatrixLazy _lazy) {
+        lazy = _lazy * lazy;
+        valu = _lazy * valu;
+    }
+} tree[N << 2];
+int ls(int p) { return p << 1; }
+int rs(int p) { return p << 1 | 1; }
+void PushUp(int p) {
+    tree[p].valu = tree[ls(p)].valu + tree[rs(p)].valu;
+}
+void PushDown(int p) {
+    tree[ls(p)].Maintain(tree[p].lazy);
+    tree[rs(p)].Maintain(tree[p].lazy);
+    // cout << "(PD l)" << ls(p) << ":" << "[" << tree[ls(p)].l << "," << tree[ls(p)].r << "] " << tree[ls(p)].valu.M[1][1] << " " << tree[ls(p)].valu.M[2][1] << " " << tree[ls(p)].valu.M[3][1] << " " << tree[ls(p)].valu.M[4][1] << endl;
+    // cout << "(PD r)" << rs(p) << ":" << "[" << tree[rs(p)].l << "," << tree[rs(p)].r << "] " << tree[rs(p)].valu.M[1][1] << " " << tree[rs(p)].valu.M[2][1] << " " << tree[rs(p)].valu.M[3][1] << " " << tree[rs(p)].valu.M[4][1] << endl;
+    tree[p].lazy.Unit();
+}
+void Build(int p, int l, int r) {
+    tree[p].l = l; tree[p].r = r;
+    tree[p].lazy.Unit();
+    if (tree[p].l == tree[p].r) {
+        tree[p].valu.M[1][1] = a[l];
+        tree[p].valu.M[2][1] = b[l];
+        tree[p].valu.M[3][1] = c[l];
+        tree[p].valu.M[4][1] = 1;
+    } else {
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        Build(ls(p), l + 0, mid);
+        Build(rs(p), mid + 1, r);
+        PushUp(p);
+    }
+    return;
+}
+Ans Ask(int p, int l, int r) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        // cout << "(Ask)" << p << ":" << "[" << tree[p].l << "," << tree[p].r << "] " << tree[p].valu.M[1][1] << " " << tree[p].valu.M[2][1] << " " << tree[p].valu.M[3][1] << " " << tree[p].valu.M[4][1] << endl;
+        return (Ans) { tree[p].valu.M[1][1] % MOD, tree[p].valu.M[2][1] % MOD, tree[p].valu.M[3][1] % MOD };
+    } else {
+        PushDown(p);
+        Ans res;
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid)res = res + Ask(ls(p), l, r);
+        if (mid < r) res = res + Ask(rs(p), l, r);
+        return res;
+    }
+}
+void Change(int p, int l, int r, MatrixLazy& lz) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        // cout << "(Change)" << p << ":" << "[" << tree[p].l << "," << tree[p].r << "] " << tree[p].valu.M[1][1] << " " << tree[p].valu.M[2][1] << " " << tree[p].valu.M[3][1] << " " << tree[p].valu.M[4][1] << endl;
+        tree[p].Maintain(lz);
+    } else {
+        PushDown(p);
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid) Change(ls(p), l, r, lz);
+        if (mid < r)  Change(rs(p), l, r, lz);
+        PushUp(p);
+    }
+    return;
+}
+/*====================*/
+void Solve() {
+    cin >> n;
+    for (int i = 1; i <= n; i++) {
+        cin >> a[i] >> b[i] >> c[i];
+    }
+    Build(1, 1, n);
+    /*
+1 100 5
+10 1000 5
+0 0 5
+    */
+    cin >> m;
+    while (m--) {
+        int op; cin >> op;
+        int l, r; cin >> l >> r;
+        MatrixLazy lz;
+        if (op == 1) {
+            lz.Add1();
+            Change(1, l, r, lz);
+        } else if (op == 2) {
+            lz.Add2();
+            Change(1, l, r, lz);
+        } else if (op == 3) {
+            lz.Add3();
+            Change(1, l, r, lz);
+        } else if (op == 4) {
+            int v; cin >> v;
+            lz.AddA(v);
+            Change(1, l, r, lz);
+        } else if (op == 5) {
+            int v; cin >> v;
+            lz.MulB(v);
+            Change(1, l, r, lz);
+        } else if (op == 6) {
+            int v; cin >> v;
+            lz.CovC(v);
+            Change(1, l, r, lz);
+        } else {
+            Ans res = Ask(1, l, r);
+            cout << res.a % MOD << " " << res.b % MOD << " " << res.c % MOD << endl;
+        }
+    }
+    return;
+}
+/*====================*/
+signed main() {
+    ios_close;
+    int _ = 1; /* cin >> _; */
+    while (_--)
+        Solve();
+    return 0;
+}
+```
+
+发现这份代码一共跑了 56s。考虑对转移时的矩阵乘法进行优化：
+
+1. 将枚举顺序换成 kij，常数会缩小到 $\frac{1}{3}$。
+
+2. 发现转移过程中矩阵的很多项始终都是无效的，考虑如何优化掉这些无用项，只保留有用的项。
+
+   我们先对转移矩阵把已知有效项置为 $1$。然后跑传递闭包算法。最终矩阵中为 $1$ 的元素始终为有效项，为 $0$ 的元素始终为无效项，对循环进行展开即可。
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+/*====================*/
+#define ios_close ios::sync_with_stdio(false), cin.tie(NULL), cout.tie(NULL)
+#define yes puts("Yes")
+#define no puts("No")
+#define lowbit(x) ((x) & (-x))
+#define inf 0x3f3f3f3f
+#define endl "\n"
+#define PII pair<int, int>
+// typedef long long LL;
+// #define int long long 
+/*====================*/
+const int MOD = 998244353;
+const int N = 3e5 + 10;
+/*====================*/
+int n, m;
+int a[N], b[N], c[N];
+struct Ans {
+    int a, b, c;
+    Ans(int _a = 0, int _b = 0, int _c = 0) {
+        a = _a; b = _b; c = _c;
+    }
+    friend Ans operator+(Ans x, Ans y) {
+        Ans z;
+        z.a = (x.a + y.a) % MOD; z.b = (x.b + y.b) % MOD; z.c = (x.c + y.c) % MOD;
+        return z;
+    }
+};
+struct MatrixLazy {
+    int M[5][5];
+    MatrixLazy() {
+        memset(M, 0, sizeof M);
+    }
+    void Unit() {
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void Add1() { // a = a + b
+        M[1][1] = 1; M[1][2] = 1; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void Add2() { // b = b + c
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 1; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void Add3() { // c = c + a
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 1; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void AddA(int d) { // a = a + v
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = d % MOD;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void MulB(int d) { // b = b * v
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = d % MOD; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 1; M[3][4] = 0;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    void CovC(int v) { // c = v
+        M[1][1] = 1; M[1][2] = 0; M[1][3] = 0; M[1][4] = 0;
+        M[2][1] = 0; M[2][2] = 1; M[2][3] = 0; M[2][4] = 0;
+        M[3][1] = 0; M[3][2] = 0; M[3][3] = 0; M[3][4] = v % MOD;
+        M[4][1] = 0; M[4][2] = 0; M[4][3] = 0; M[4][4] = 1;
+    }
+    friend MatrixLazy operator*(MatrixLazy& a, MatrixLazy& b) {
+        MatrixLazy c;
+        // for (int k = 1; k <= 4; k++) {
+        //     for (int i = 1; i <= 4; i++) {
+        //         for (int j = 1; j <= 4; j++) {
+        //             (c.M[i][j] += (long long)(1ll * a.M[i][k] % MOD * b.M[k][j] % MOD) % MOD) %= MOD;
+        //         }
+        //     }
+        // }
+        c.M[1][1] = (1LL * a.M[1][1] * b.M[1][1] % MOD + 1LL * a.M[1][2] * b.M[2][1] % MOD + 1LL * a.M[1][3] * b.M[3][1] % MOD) % MOD;
+        c.M[1][2] = (1LL * a.M[1][1] * b.M[1][2] % MOD + 1LL * a.M[1][2] * b.M[2][2] % MOD + 1LL * a.M[1][3] * b.M[3][2] % MOD) % MOD;
+        c.M[1][3] = (1LL * a.M[1][1] * b.M[1][3] % MOD + 1LL * a.M[1][2] * b.M[2][3] % MOD + 1LL * a.M[1][3] * b.M[3][3] % MOD) % MOD;
+        c.M[1][4] = (1LL * a.M[1][1] * b.M[1][4] % MOD + 1LL * a.M[1][2] * b.M[2][4] % MOD + 1LL * a.M[1][3] * b.M[3][4] % MOD + 1LL * a.M[1][4] * b.M[4][4] % MOD) % MOD;
+        c.M[2][1] = (1LL * a.M[2][1] * b.M[1][1] % MOD + 1LL * a.M[2][2] * b.M[2][1] % MOD + 1LL * a.M[2][3] * b.M[3][1] % MOD) % MOD;
+        c.M[2][2] = (1LL * a.M[2][1] * b.M[1][2] % MOD + 1LL * a.M[2][2] * b.M[2][2] % MOD + 1LL * a.M[2][3] * b.M[3][2] % MOD) % MOD;
+        c.M[2][3] = (1LL * a.M[2][1] * b.M[1][3] % MOD + 1LL * a.M[2][2] * b.M[2][3] % MOD + 1LL * a.M[2][3] * b.M[3][3] % MOD) % MOD;
+        c.M[2][4] = (1LL * a.M[2][1] * b.M[1][4] % MOD + 1LL * a.M[2][2] * b.M[2][4] % MOD + 1LL * a.M[2][3] * b.M[3][4] % MOD + 1LL * a.M[2][4] * b.M[4][4] % MOD) % MOD;
+        c.M[3][1] = (1LL * a.M[3][1] * b.M[1][1] % MOD + 1LL * a.M[3][2] * b.M[2][1] % MOD + 1LL * a.M[3][3] * b.M[3][1] % MOD) % MOD;
+        c.M[3][2] = (1LL * a.M[3][1] * b.M[1][2] % MOD + 1LL * a.M[3][2] * b.M[2][2] % MOD + 1LL * a.M[3][3] * b.M[3][2] % MOD) % MOD;
+        c.M[3][3] = (1LL * a.M[3][1] * b.M[1][3] % MOD + 1LL * a.M[3][2] * b.M[2][3] % MOD + 1LL * a.M[3][3] * b.M[3][3] % MOD) % MOD;
+        c.M[3][4] = (1LL * a.M[3][1] * b.M[1][4] % MOD + 1LL * a.M[3][2] * b.M[2][4] % MOD + 1LL * a.M[3][3] * b.M[3][4] % MOD + 1LL * a.M[3][4] * b.M[4][4] % MOD) % MOD;
+        c.M[4][4] = (1LL * a.M[4][4] * b.M[4][4] % MOD) % MOD;
+        return c;
+    }
+};
+struct MatrixValu {
+    int M[5][2]; // a b c len
+    MatrixValu() {
+        memset(M, 0, sizeof M);
+    }
+    friend MatrixValu operator+(MatrixValu& a, MatrixValu& b) {
+        MatrixValu c;
+        for (int i = 1; i <= 4; i++) {
+            for (int j = 1; j <= 1; j++) {
+                c.M[i][j] = (a.M[i][j] + b.M[i][j]) % MOD;
+            }
+        }
+        return c;
+    }
+    friend MatrixValu operator*(MatrixLazy& a, MatrixValu& b) {
+        MatrixValu c;
+        // for (int k = 1; k <= 4; k++) {
+        //     for (int i = 1; i <= 4; i++) {
+        //         for (int j = 1; j <= 1; j++) {
+        //             (c.M[i][j] += (long long)(1ll * a.M[i][k] % MOD * b.M[k][j] % MOD) % MOD) %= MOD;
+        //         }
+        //     }
+        // }
+        c.M[1][1] = (1LL * a.M[1][1] * b.M[1][1] % MOD + 1LL * a.M[1][2] * b.M[2][1] % MOD + 1LL * a.M[1][3] * b.M[3][1] % MOD + 1LL * a.M[1][4] * b.M[4][1] % MOD) % MOD;
+        c.M[2][1] = (1LL * a.M[2][1] * b.M[1][1] % MOD + 1LL * a.M[2][2] * b.M[2][1] % MOD + 1LL * a.M[2][3] * b.M[3][1] % MOD + 1LL * a.M[2][4] * b.M[4][1] % MOD) % MOD;
+        c.M[3][1] = (1LL * a.M[3][1] * b.M[1][1] % MOD + 1LL * a.M[3][2] * b.M[2][1] % MOD + 1LL * a.M[3][3] * b.M[3][1] % MOD + 1LL * a.M[3][4] * b.M[4][1] % MOD) % MOD;
+        c.M[4][1] = (1LL * a.M[4][4] * b.M[4][1] % MOD) % MOD;
+        return c;
+    }
+};
+struct Tree {
+    int l, r;
+    MatrixLazy lazy;
+    MatrixValu valu;
+    void Maintain(MatrixLazy _lazy) {
+        lazy = _lazy * lazy;
+        valu = _lazy * valu;
+    }
+} tree[N << 2];
+int ls(int p) { return p << 1; }
+int rs(int p) { return p << 1 | 1; }
+void PushUp(int p) {
+    tree[p].valu = tree[ls(p)].valu + tree[rs(p)].valu;
+}
+void PushDown(int p) {
+    tree[ls(p)].Maintain(tree[p].lazy);
+    tree[rs(p)].Maintain(tree[p].lazy);
+    // cout << "(PD l)" << ls(p) << ":" << "[" << tree[ls(p)].l << "," << tree[ls(p)].r << "] " << tree[ls(p)].valu.M[1][1] << " " << tree[ls(p)].valu.M[2][1] << " " << tree[ls(p)].valu.M[3][1] << " " << tree[ls(p)].valu.M[4][1] << endl;
+    // cout << "(PD r)" << rs(p) << ":" << "[" << tree[rs(p)].l << "," << tree[rs(p)].r << "] " << tree[rs(p)].valu.M[1][1] << " " << tree[rs(p)].valu.M[2][1] << " " << tree[rs(p)].valu.M[3][1] << " " << tree[rs(p)].valu.M[4][1] << endl;
+    tree[p].lazy.Unit();
+}
+void Build(int p, int l, int r) {
+    tree[p].l = l; tree[p].r = r;
+    tree[p].lazy.Unit();
+    if (tree[p].l == tree[p].r) {
+        tree[p].valu.M[1][1] = a[l] % MOD;
+        tree[p].valu.M[2][1] = b[l] % MOD;
+        tree[p].valu.M[3][1] = c[l] % MOD;
+        tree[p].valu.M[4][1] = 1;
+    } else {
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        Build(ls(p), l + 0, mid);
+        Build(rs(p), mid + 1, r);
+        PushUp(p);
+    }
+    return;
+}
+Ans Ask(int p, int l, int r) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        // cout << "(Ask)" << p << ":" << "[" << tree[p].l << "," << tree[p].r << "] " << tree[p].valu.M[1][1] << " " << tree[p].valu.M[2][1] << " " << tree[p].valu.M[3][1] << " " << tree[p].valu.M[4][1] << endl;
+        return (Ans) { tree[p].valu.M[1][1] % MOD, tree[p].valu.M[2][1] % MOD, tree[p].valu.M[3][1] % MOD };
+    } else {
+        PushDown(p);
+        Ans res;
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid)res = res + Ask(ls(p), l, r);
+        if (mid < r) res = res + Ask(rs(p), l, r);
+        return res;
+    }
+}
+void Change(int p, int l, int r, MatrixLazy& lz) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        // cout << "(Change)" << p << ":" << "[" << tree[p].l << "," << tree[p].r << "] " << tree[p].valu.M[1][1] << " " << tree[p].valu.M[2][1] << " " << tree[p].valu.M[3][1] << " " << tree[p].valu.M[4][1] << endl;
+        tree[p].Maintain(lz);
+    } else {
+        PushDown(p);
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid) Change(ls(p), l, r, lz);
+        if (mid < r)  Change(rs(p), l, r, lz);
+        PushUp(p);
+    }
+    return;
+}
+/*====================*/
+void test() { // 传递闭包优化
+    MatrixLazy m;
+    MatrixLazy A1; A1.Add1();
+    for (int i = 1; i <= 4; i++) for (int j = 1; j <= 4; j++) m.M[i][j] |= (A1.M[i][j] != 0);
+    MatrixLazy A2; A2.Add2();
+    for (int i = 1; i <= 4; i++) for (int j = 1; j <= 4; j++) m.M[i][j] |= (A2.M[i][j] != 0);
+    MatrixLazy A3; A3.Add3();
+    for (int i = 1; i <= 4; i++) for (int j = 1; j <= 4; j++) m.M[i][j] |= (A3.M[i][j] != 0);
+    MatrixLazy AA; AA.AddA(1);
+    for (int i = 1; i <= 4; i++) for (int j = 1; j <= 4; j++) m.M[i][j] |= (AA.M[i][j] != 0);
+    MatrixLazy MB; MB.MulB(1);
+    for (int i = 1; i <= 4; i++) for (int j = 1; j <= 4; j++) m.M[i][j] |= (MB.M[i][j] != 0);
+    MatrixLazy CC; CC.CovC(1);
+    for (int i = 1; i <= 4; i++) for (int j = 1; j <= 4; j++) m.M[i][j] |= (CC.M[i][j] != 0);
+    for (int k = 1; k <= 4; k++)
+        for (int i = 1; i <= 4; i++)
+            for (int j = 1; j <= 4; j++)
+                m.M[i][j] |= m.M[i][k] & m.M[k][j];
+    for (int i = 1; i <= 4; i++) {
+        for (int j = 1; j <= 4; j++) {
+            if (m.M[i][j] == 1) {
+                printf("c.M[%d][%d] = ", i, j);
+                for (int k = 1; k <= 4; k++) {
+                    if (m.M[i][k] && m.M[k][j]) {
+                        printf("1LL * a.M[%d][%d]*b.M[%d][%d] % MOD + ", i, k, k, j);
+                    }
+                }
+                printf("\n");
+            }
+        }
+    }
+
+    printf("\n");
+
+    MatrixValu val;
+    val.M[1][1] = 1; val.M[2][1] = 1; val.M[3][1] = 1; val.M[4][1] = 1;
+    for (int i = 1; i <= 4; i++) {
+        for (int j = 1; j <= 1; j++) {
+            printf("c.M[%d][%d] = ", i, j);
+            for (int k = 1; k <= 4; k++) {
+                if (m.M[i][k] && val.M[k][j]) {
+                    printf("1LL * a.M[%d][%d]*b.M[%d][%d] % MOD + ", i, k, k, j);
+                }
+            }
+            printf("\n");
+        }
+    }
+    return;
+}
+/*====================*/
+void Solve() {
+    // test();
+    // return;
+    cin >> n;
+    for (int i = 1; i <= n; i++) {
+        cin >> a[i] >> b[i] >> c[i];
+    }
+    Build(1, 1, n);
+    /*
+1 100 5
+10 1000 5
+0 0 5
+    */
+    cin >> m;
+    while (m--) {
+        int op; cin >> op;
+        int l, r; cin >> l >> r;
+        MatrixLazy lz;
+        if (op == 1) {
+            lz.Add1();
+            Change(1, l, r, lz);
+        } else if (op == 2) {
+            lz.Add2();
+            Change(1, l, r, lz);
+        } else if (op == 3) {
+            lz.Add3();
+            Change(1, l, r, lz);
+        } else if (op == 4) {
+            int v; cin >> v;
+            lz.AddA(v);
+            Change(1, l, r, lz);
+        } else if (op == 5) {
+            int v; cin >> v;
+            lz.MulB(v);
+            Change(1, l, r, lz);
+        } else if (op == 6) {
+            int v; cin >> v;
+            lz.CovC(v);
+            Change(1, l, r, lz);
+        } else {
+            Ans res = Ask(1, l, r);
+            cout << res.a % MOD << " " << res.b % MOD << " " << res.c % MOD << endl;
+        }
+    }
+    return;
+}
+/*====================*/
+signed main() {
+    ios_close;
+    int _ = 1; /* cin >> _; */
+    while (_--)
+        Solve();
+    return 0;
+}
+```
+
+优化后的代码可以跑到 27.43s，如果继续优化访问顺序，可以跑到 16.62s。
+
+```cpp
+	friend MatrixLazy operator*(MatrixLazy& a, MatrixLazy& b) {
+        MatrixLazy c;
+        // for (int k = 1; k <= 4; k++) {
+        //     for (int i = 1; i <= 4; i++) {
+        //         for (int j = 1; j <= 4; j++) {
+        //             (c.M[i][j] += (long long)(1ll * a.M[i][k] % MOD * b.M[k][j] % MOD) % MOD) %= MOD;
+        //         }
+        //     }
+        // }
+        for (int i = 1; i <= 3; i++) {
+            for (int j = 1; j <= 3; j++) {
+                long long s =
+                    1LL * a.M[i][1] * b.M[1][j] +
+                    1LL * a.M[i][2] * b.M[2][j] +
+                    1LL * a.M[i][3] * b.M[3][j];
+                c.M[i][j] = s % MOD;
+            }
+            long long t =
+                1LL * a.M[i][1] * b.M[1][4] +
+                1LL * a.M[i][2] * b.M[2][4] +
+                1LL * a.M[i][3] * b.M[3][4] +
+                a.M[i][4];
+            c.M[i][4] = t % MOD;
+        }
+        c.M[4][1] = 0; c.M[4][2] = 0; c.M[4][3] = 0; c.M[4][4] = 1;
+        return c;
+    }
+    friend MatrixValu operator*(MatrixLazy& a, MatrixValu& b) {
+        MatrixValu c;
+        // for (int k = 1; k <= 4; k++) {
+        //     for (int i = 1; i <= 4; i++) {
+        //         for (int j = 1; j <= 1; j++) {
+        //             (c.M[i][j] += (long long)(1ll * a.M[i][k] % MOD * b.M[k][j] % MOD) % MOD) %= MOD;
+        //         }
+        //     }
+        // }
+        for (int i = 1; i <= 3; i++) {
+            long long s =
+                1LL * a.M[i][1] * b.M[1][1] +
+                1LL * a.M[i][2] * b.M[2][1] +
+                1LL * a.M[i][3] * b.M[3][1] +
+                1LL * a.M[i][4] * b.M[4][1];
+            c.M[i][1] = s % MOD;
+        }
+        c.M[4][1] = b.M[4][1];
+        return c;
+    }
+```
+
+## [P14015 [ICPC 2024 Nanjing R] 生日礼物](https://www.luogu.com.cn/problem/P14015)
+
+很厉害的 trick。
+
+考虑对原串所有偶数位翻转，这样后两个操作可以转化为删除子串 $\verb!01!$ 或 $\verb!10!$，并将剩下的部分拼接起来。
+
+不难发现，这样会把所有相邻不同的元素删掉，最后剩下的一定是若干个 $0$ 或若干个 $1$。
+
+设串串原来 $0,1,2$ 的个数分别为 $c_0,c_1,c_2$，不难发现，由于删除操作删除的是一对 $0$ 和 $1$，所以 $\|c_0-c_1\|$ 恒不变。因此我们只需要考虑 $c_2$ 和 $\|c_0-c_1\|$ 的关系即可。
+
+- 若 $c_2 < \|c_0-c_1\|$，我们可以将 $2$ 全部改为 $0$ 和 $1$ 中数量最少的，这样可以保证消除的 $01$ 对数量最大化。
+- 若 $c_2 \ge \|c_0-c_1\|$，多余的 $2$ 可以两两抵消，最后答案就是 $(\|c_0-c_1\| + c_2)\operatorname{mod}2$ 。
+
+```cpp
+void Solve() {
+    cin >> s;
+    for (int i = 1; i < s.length(); i += 2) {
+        if (s[i] == '2') continue;
+        s[i] = (s[i] == '1') ? '0' : '1';
+    }
+    // cout << s << endl;
+    int c[3] = { 0, 0, 0 };
+    for (auto i : s) {
+        c[i - '0']++;
+    }
+    int res = abs(c[0] - c[1]);
+    if (c[2] >= res) cout << ((c[2] + res) & 1) << endl;
+    else cout << (res - c[2]) << endl;
+    return;
+}
+```
+
+## [T669094 R16 - A「弄潮铁血」 - 洛谷](https://www.luogu.com.cn/problem/T669094)
+
+首先当 $n\bmod (k+1)=0$ 时先手必败，否则先手必胜。
+
+证：如果 $n=q\times(k+1)+r$，先手只要一次取走 $r$ 个石子，剩余正好变成 $q\times(k+1)$。之后无论对手怎么取（取 $t$ 个，$1\le t\le k$），你都能取 $k+1-t$ 个，两人在一回合一共取走 $k+1$ 个，最后一组 $k+1$ 由你结尾，对手一定无子可取。所以先手必胜，反之必输。
+
+我们可以把答案分开计算。先算全部先手必胜的情况为 $\sum\limits_{n,k}(n\oplus k)$，对于每一位，统计出 $1\sim N$ 中当前位为 $0/1$ 的数量 $c_{0}(t),c_{1}(t)$，则答案为：$\sum\limits_b 2^{b}\cdot 2c_{0}(t)c_{1}(t)$。先手必败的状态贡献为 $-2\!\!\!\sum\limits_{n,k\in \mathcal L}(n\oplus k)$。其中 $\mathcal L$ 是先手必败状态的 $n,k$ 集合。
+
+先手必败的状态很稀疏，考虑如何计算必败态的贡献。假设确定了 $p$ 为先手必败态，则 $p+1\sim p+k$ 都为先手必胜态，因为先手可以操作到 $p$ 从而把必败态丢给后手。正常情况下 $p+k+1$ 为先手必败态，但此时如果 $p+k+1$ 为某个 $a_i$，则被强制钦定为先手必胜，那么应当顺次检查 $p+k+2$，如果也是某个 $a_i$ 就继续向后寻找，直到找到第一个不在序列 $a$ 中的数即可。
+
+我们预处理 $nxt_i$ 表示从 $i$ 向后第一个不在序列 $a$ 中的数，则 $p$ 后的第一个先手必败态就是 $nxt_{p+k+1}$，暴力向后跳即可。时间复杂度 $O(N\log N)$。
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+/*====================*/
+#define ios_close ios::sync_with_stdio(false), cin.tie(NULL), cout.tie(NULL)
+#define yes puts("Yes")
+#define no puts("No")
+#define lowbit(x) ((x) & (-x))
+#define inf 0x3f3f3f3f
+#define endl "\n"
+#define PII pair<int, int>
+// typedef long long LL;
+#define int long long
+/*====================*/
+const int MOD = 1e9 + 7;
+const int N = 1e6 + 10;
+/*====================*/
+int n, m;
+int pos[N];
+int nxt[N];
+/*====================*/
+int calc(int n, int b) { // 找 1 \sim N 之间第 b 位为 1 的数量
+    int cnt = 0;
+    for (int i = 1; i <= n; i++) {
+        if (i & (1 << b)) cnt++;
+    }
+    return cnt;
+}
+/*====================*/
+void Solve() {
+    cin >> n >> m;
+    for (int i = 1; i <= m; i++) {
+        int x; cin >> x;
+        pos[x] = 1;
+    }
+    nxt[n + 1] = n + 1;
+    for (int i = n; i >= 1; i--) {
+        nxt[i] = pos[i] ? nxt[i + 1] : i;
+    }
+    int sum = 0; // 必胜态
+    for (int i = 0; (1 << i) <= n; i++) {
+        int c1 = calc(n, i);
+        int c0 = n - c1;
+        sum += (1 << i) * 2 * c1 * c0;
+    }
+    int ans = 0; // 必败态
+    for (int k = 1; k <= n; k++) {
+        int p = 0;
+        while (1) {
+            int nx = p + k + 1;
+            if (nx > n) break;
+            int tp = nxt[nx];
+            if (tp > n) break;
+            p = tp;
+            ans += (tp ^ k);
+        }
+    }
+    cout << sum - (ans << 1) << endl;
+    return;
+}
+/*====================*/
+signed main() {
+    ios_close;
+    int _ = 1; /* cin >> _; */
+    while (_--)
+        Solve();
+    return 0;
+}
+```
+
+## [P12359 [eJOI 2024] 古迹漫步 / Old Orhei](https://www.luogu.com.cn/problem/P12359)
+
+直接暴力查询复杂度是 $O(Q\times T)$，考虑优化。
+
+发现点的数量很少，并且序列 A 中对多个连续段操作可以合并成一次操作。考虑用线段树进行优化。我们用线段树节点维护序列 A 中的一个区间 $[l, r]$，表示从某个点出发，经过 A 序列中的这段区间可以到达哪个点。如果第 $i$ 个点经过 $A_l,A_{l+1},...,A_x$ 操作后可以到达 $j$，经过 $A_x,A_{x+1},...,A_r$ 操作后可以到达 $k$，则 $i$ 可以经过 $A_l,...,A_r$ 操作直接到达 $k$，将节点信息向上更新即可。 
+
+``` cpp
+struct Road {
+    int u, v; // A_u \sim A_v
+} rd[N];
+struct Tree {
+    int l, r;
+    int to[105];
+} tree[N << 2];
+int ls(int p) { return p << 1; }
+int rs(int p) { return p << 1 | 1; }
+void PushUp(int p) {
+    for (int i = 1; i <= n; i++) {
+        tree[p].to[i] = tree[rs(p)].to[tree[ls(p)].to[i]];
+    }
+}
+void Build(int p, int l, int r) {
+    tree[p].l = l;
+    tree[p].r = r;
+    if (tree[p].l == tree[p].r) {
+        for (int i = 1; i <= n; i++) tree[p].to[i] = i;
+        tree[p].to[rd[a[l]].u] = rd[a[l]].v;
+    } else {
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        Build(ls(p), l + 0, mid);
+        Build(rs(p), mid + 1, r);
+        PushUp(p);
+    }
+}
+void Change(int p, int x, int d) {
+    if (tree[p].l == tree[p].r) {
+        for (int i = 1; i <= n; i++)  tree[p].to[i] = i;
+        tree[p].to[rd[d].u] = rd[d].v;
+    } else {
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (x <= mid)Change(ls(p), x, d);
+        if (mid < x) Change(rs(p), x, d);
+        PushUp(p);
+    }
+}
+int Ask(int p, int l, int r, int s) {
+    if (l <= tree[p].l && tree[p].r <= r) {
+        return tree[p].to[s];
+    } else {
+        int res = s;
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid) res = Ask(ls(p), l, r, res);
+        if (mid < r)  res = Ask(rs(p), l, r, res);
+        return res;
+    }
+}
+/*====================*/
+void Solve() {
+    cin >> n >> m;
+    for (int i = 1; i <= m; i++) {
+        int u, v; cin >> u >> v;
+        rd[i].u = u;
+        rd[i].v = v;
+    }
+    cin >> t;
+    for (int i = 1; i <= t; i++) {
+        cin >> a[i];
+    }
+    Build(1, 1, t);
+    cin >> q;
+    while (q--) {
+        int op, l, r;
+        cin >> op >> l >> r;
+        if (op == 1) {
+            int s; cin >> s;
+            cout << Ask(1, l, r, s) << endl;
+        } else {
+            Change(1, l, r);
+        }
+    }
+    return;
+}
+```
+
+## 10.19 简单题
+
+Q: 判断一个数是否可以被表示成 $x^2-y^2$ 的形式，其中 $x,y$ 是非负整数，值域 $10^9$，多测。
+
+A: $x^2-y^2=(x+y)(x-y)$，其中 $x+y$ 与 $x-y$ 奇偶性相同，如果同为奇数，则乘积为奇数，如果同为偶数，则乘积能被 $4$ 整除。
+
+所以任意 $n \equiv 2\ (\bmod\ 4)$ 都不能被表示成 $x^2-y^2$ 的形式。
+
+## [P7913 [CSP-S 2021] 廊桥分配](https://www.luogu.com.cn/problem/P7913)
+
+考虑航班进港顺序是一定的，所以在忽略廊桥数量限制的情况下，廊桥占用情况是一定的。我们先忽略廊桥数量这一限制，用优先队列模拟航班进港，有廊桥优先使用廊桥，记一个 $cnt_i$ 表示第 $i$ 个廊桥会停多少辆飞机，然后做累加做前缀和，表示某个区有 $i$ 个廊桥可以停多少辆飞机。
+
+最后枚举国内区廊桥数量 $i$，那么国际区廊桥数量就是 $n-i$，最后答案即为 $\max\limits_{i=0}^{n} cnt_{i,0}+cnt_{(n-i),1}$，其中 $cnt_{i,0/1}$ 分别表示国内/国际区廊桥占有情况。
+
+```cpp
+void Solve() {
+    cin >> n >> m1 >> m2;
+    for (int i = 1; i <= m1; i++) {
+        cin >> a[i].first >> a[i].second;
+    }
+    for (int i = 1; i <= m2; i++) {
+        cin >> b[i].first >> b[i].second;
+    }
+    sort(a + 1, a + m1 + 1);
+    sort(b + 1, b + m2 + 1);
+    priority_queue<PII, vector<PII>, greater<PII>> q;
+    priority_queue<int, vector<int>, greater<int>> lq;
+    for (int i = 1; i <= n; i++) lq.push(i);
+    for (int i = 1; i <= m1; i++) {
+        while (!q.empty() && a[i].first >= q.top().first) {
+            lq.push(q.top().second);
+            q.pop();
+        }
+        if (lq.empty()) continue;
+        int f = lq.top();
+        lq.pop();
+        q.push({ a[i].second, f });
+        cnt[f][0]++;
+    }
+    while (!lq.empty()) lq.pop();
+    while (!q.empty()) q.pop();
+    for (int i = 1; i <= n; i++) lq.push(i);
+    for (int i = 1; i <= m2; i++) {
+        while (!q.empty() && b[i].first >= q.top().first) {
+            lq.push(q.top().second);
+            q.pop();
+        }
+        if (lq.empty()) continue;
+        int f = lq.top();
+        lq.pop();
+        q.push({ b[i].second, f });
+        cnt[f][1]++;
+    }
+    for (int i = 1; i <= n; i++) {
+        cnt[i][0] += cnt[i - 1][0];
+        cnt[i][1] += cnt[i - 1][1];
+    }
+    int ans = -inf;
+    for (int i = 0; i <= n; i++) {
+        ans = max(ans, cnt[i][0] + cnt[n - i][1]);
+    }
+    cout << ans << endl;
+    return;
+}
+```
+
+## [P14175 【MX-X23-T5】向死存魏](https://www.luogu.com.cn/problem/P14175)
+
+在线做法。
+
+考虑维护每个值下一次出现的位置，记 $\operatorname{nxt}(i, x)$ 表示 $i$ 之后下一个 $x$ 出现的位置，记 $ans_i$ 表示 $i$ 之后最小的 $j$ 满足区间 $[i,j]$ 包含 $[1,V]$ 所有数，则 $ans_i = \max\limits_{x=1}^{V}\operatorname{nxt}(i, x)$。
+
+那么对于操作三，我们存一下每个数出现的位置，然后预处理出 $nxt$ 和 $ans$ 的值 ，如果有解答案就是 $ans_l$。同理，如果 $[1,V]$ 中的某个元素最后一次出现位置在 $l$ 之前，则 $l$ 后一定有数字没出现，无解。这里用 set 维护每个值最后出现的位置，每次判一下最后出现次数的最小值（也就是 `*s.begin()`）即可。
+
+对于操作二，我们假设 $x$ 在**操作前序列**中最后一次出现的位置为 $lst_x$，这是第 $cnt$ 次操作二（已经插入了 $cnt-1$ 个数），则当前 $x$ 应该插到第 $n + cnt$ 的位置。对于 $i\in [lxt_x + 1, n + cnt]$ ，其中间一定没有 $x$ 出现（$lst_x$ 为原序列 $x$ 最后出现的位置），要想完整找到 $[1,V]$ 中所有数，至少在 $n + cnt$ 位置或其之后，应更新 $ans_i=n+cnt$。
+
+对于操作一，在 $x$ 所有出现位置的序列中二分，找到第一个大于等于 $l$ 的前一个出现位置 $\ell'$，以及第一个大于 $r$ 的位置 $r'$，由于 $[l,r]$ 中所有 $x$ 被删掉了，所以 $i\in [\ell'+1, r']$  的 $\operatorname{nxt}(x,i)$ 都应更新为 $r'$，$ans_i$ 做一下 $\operatorname{chmax}$ 即可。如果 $r$ 后面没有 $x$ 了，就把 $ans_i$ 临时更新成 $n+cnt+1$，后面再次插入 $x$ 会将此处的值继续更新。最后把 $x$ 位置包含在 $[l,r]$ 里的删掉即可。
+
+$ans$ 是区间更新 $\max$ ，单点查询，可以用线段树维护，总时间复杂度是 $O(n\log n)$ 级别。
+
+```cpp
+int n, m, V;
+vector<int> pos[N];
+multiset<int> lst;
+int a[N];
+int cnt;
+struct Tree { // chmax
+    int l, r;
+    int maxv, tag;
+    void Maintain(int _tag) {
+        tag = max(_tag, tag);
+        maxv = max(_tag, maxv);
+    }
+} tree[N << 3]; // (n + m) << 2
+int ls(int p) { return p << 1; }
+int rs(int p) { return p << 1 | 1; }
+void PushUp(int p) {
+    tree[p].maxv = max(tree[ls(p)].maxv, tree[rs(p)].maxv);
+}
+void PushDown(int p) {
+    tree[ls(p)].Maintain(tree[p].tag);
+    tree[rs(p)].Maintain(tree[p].tag);
+    tree[p].tag = 0;
+}
+void Build(int p, int l, int r) {
+    tree[p].l = l, tree[p].r = r; tree[p].tag = 0;
+    if (tree[p].l == tree[p].r) {
+        tree[p].maxv = 0;
+    } else {
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        Build(ls(p), l + 0, mid);
+        Build(rs(p), mid + 1, r);
+        PushUp(p);
+    }
+}
+void Change(int p, int l, int r, int d) {
+    if (l > r) return;
+    if (r < tree[p].l || tree[p].r < l) return;
+    if (l <= tree[p].l && tree[p].r <= r) {
+        tree[p].Maintain(d);
+    } else {
+        PushDown(p);
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        if (l <= mid)Change(ls(p), l, r, d);
+        if (mid < r) Change(rs(p), l, r, d);
+        PushUp(p);
+    }
+}
+int Ask(int p, int x) {
+    if (tree[p].l == tree[p].r) {
+        return tree[p].maxv;
+    } else {
+        PushDown(p);
+        int mid = (tree[p].l + tree[p].r) >> 1;
+        int res = -inf;
+        if (x <= mid)res = max(res, Ask(ls(p), x));
+        if (mid < x) res = max(res, Ask(rs(p), x));
+        return res;
+    }
+}
+/*====================*/
+void Solve() {
+    cin >> n >> m >> V;
+    Build(1, 1, n + m);
+    for (int i = 1; i <= V; i++) {
+        pos[i].push_back(0);
+    }
+    for (int i = 1; i <= n; i++) {
+        cin >> a[i];
+        pos[a[i]].push_back(i);
+    }
+    for (int i = 1; i <= V; i++) {
+        for (auto j = 1; j < pos[i].size(); j++)   Change(1, pos[i][j - 1] + 1, pos[i][j], pos[i][j]);
+        lst.insert(pos[i].back());
+    }
+    while (m--) {
+        int op; cin >> op;
+        if (op == 1) {
+            int ll, rr, x; cin >> ll >> rr >> x;
+            auto l = lower_bound(pos[x].begin(), pos[x].end(), ll); // >= l
+            auto r = upper_bound(pos[x].begin(), pos[x].end(), rr); // > r
+            auto nl = l, nr = r;
+            r--; // 防止下面 *r 取到 end，r' 位置本身没有被影响到，可以不更新
+            nl--; // 取到 l 前一个位置
+            int maxn = (nr == pos[x].end()) ? n + cnt + 1 : *nr;
+            Change(1, (*nl) + 1, *r, maxn);
+            lst.erase(lst.find(pos[x].back()));
+            pos[x].erase(l, nr); // 删掉 [l,r] 范围内的元素
+            lst.insert(pos[x].back());
+        } else if (op == 2) {
+            int x; cin >> x;
+            cnt++;
+            Change(1, pos[x].back() + 1, n + cnt, n + cnt);
+            lst.erase(lst.find(pos[x].back()));
+            lst.insert(n + cnt);
+            pos[x].push_back(n + cnt);
+        } else {
+            int l; cin >> l;
+            if (l > *lst.begin()) cout << -1 << endl;
+            else cout << Ask(1, l) << endl;
+        }
+    }
+    return;
+}
+```
+
+## [AT_agc052_a](https://www.luogu.com.cn/problem/AT_agc052_a)
+
+在某个 zky 的题单里看到这个题。随手猜了个结论就过了。
+
+先放结论：
+
+$$T=\begin{matrix}\underbrace{11\cdots1}\\N\cdot1\end{matrix}+\begin{matrix}\underbrace{00\cdots0}\\N\cdot0\end{matrix}+1.$$
+
+如何证明？首先原长度为 $2N$ 的字符串 $S$ 有 $N$ 个 $1$ 和 $N$ 个 $0$，我们令拼接后的字符串 $S'=S_1+S_2$。（$S_1=S_2=S$）
+
+因为前面的字符串 $S_1$ 等同于原串 $S$，其中一定包含 $N$ 个 $1$，所以我们可以在不超过 $2N$ 位置的字符串中取完 $N$ 个 $1$，同理可以在字符串 $S_2$ 中取完 $N$ 个 $0$。
+
+考虑如何证明最后一定能取到至少一个 $1$。我们假设最后取完 $N$ 个 $0$ 后没有 $1$ 可以取，那么字符串 $S_2$ 末尾至少有一个 $0$，形如：
+
+$$\cdots+\begin{matrix}\underbrace{11\cdots1}\\x\cdot1\end{matrix}+\begin{matrix}\underbrace{00\cdots0}\\y\cdot0\end{matrix}.$$
+
+其中 $1 \le x,y \le N, x + y \leq 2N$，同理 $S_1$ 的末尾一定也有 $y$ 个 $0$，也就是说我们可以在前 $2N$ 个位置取完 $N$ 个 $1$ 和 $y$ 个 $0$，然后只需要在 $S_2$ 中取到 $N-y$ 个 $0$ 即可。观察 $S_2$ 的结构，$S_2$ 中包含 $N$ 个 $0$，去掉末尾连续的 $y$ 个 $0$ 后正好为 $N-y$ 个，可以在 $S_2$ 的最后的 $2N-x-y$ 位置前取完 ，所以 $S_2$ 末尾的连续 $x$ 个 $1$ 一定可以取到。结论成立。
+
+## 11.16 构造题
+
+用若干个 L 形的三角覆盖 $n\times n$ 的棋盘，问是否可以将棋盘填到恰好空出一个格子。输出方案。$n \le 10^3$。
+
+![](https://s1.bpoj.top/649090f5870f2bd78c4b89e1c7f07413.png){: w="300" h="300" }
+
+--- 
+
+一共要用 L 形的三角覆盖 $n ^ 2 - 1$ 个格子，每个 L 形恰好覆盖三个格子，所以可行的必要条件是
+
+$$
+3 \mid (n^2 - 1) \Longleftrightarrow n^2 - 1 \equiv 0\ (\operatorname{mod} 3).
+$$
+
+转化一下，原式等价于 $n \not\equiv 0\ (\operatorname{mod} 3)$。分别对 $n \equiv 1\ (\operatorname{mod} 3)$ 和 $n \equiv 2\ (\operatorname{mod} 3)$ 给出构造方案：
+
+- $n \equiv 1\ (\operatorname{mod} 3)$: 
+
+    首先在左上角的 $4\times 4$ 的子棋盘内，按如下方式放置 $5$ 块 L 形三角，恰好留下一个格子未覆盖，记为 $(4,1)$：
+
+    ![](https://s1.bpoj.top/da4c7c187da4a3c585d7201c1fa20fe0.png){: w="300" h="300" }
+
+    对第 $1,2$ 行以及第 $3,4$ 行，从第 $5$ 列开始，将整个区域分割为若干个 $2\times 3$ 的长方形，每个长方形用两块 L 形三角覆盖，如下图所示：
+
+    ![](https://s1.bpoj.top/3fb38cf2af3aeae2ae8119065821db44.png){: w="300" h="300" }
+
+    这样前四行的格子只剩下一个未被覆盖。
+
+    接下来考虑如何覆盖第 $5$ 行到第 $n$ 行的格子，根据 $n$ 的奇偶性分类讨论：
+
+    - 若 $n$ 为偶数：
+
+        此时 $n-4 \equiv 0\ (\operatorname{mod} 3)$，将剩余的 $(n-4)\times n$ 区域划分成若干个 $3\times 2$ 的长方形，每个长方形用两个 L 形三角覆盖即可。最终只剩下 $(4,1)$ 格子未覆盖，满足题目要求。
+    
+    - 若 $n$ 为奇数：
+
+        此时先在前三列中用类似蛇形结构，将上下两部分通过若干个 L 形三角连通起来，如下图所示：
+
+        ![](https://s1.bpoj.top/f4e15fda99547ef160fe549fe8072510.png){: w="300" h="300" }
+
+        空出来 $(n, 3)$ 然后剩下部分按行分成若干个 $3\times 2$ 的长方形，每个长方形用两个 L 形三角覆盖即可。
+
+- $n \equiv 2\ (\operatorname{mod} 3)$: 
+
+    考虑先在左上角 $2\times 2$ 的子棋盘里覆盖 $(1, 1)$、$(1, 2)$、$(2, 2)$，预留 $(2,1)$ 不覆盖。
+    
+    然后把前两行从第 $3$ 列开始，划分为若干个 $2\times 3$ 的长方形，同样用每个长方形用两个 L 形三角覆盖。
+
+    对于第 $3$ 行到第 $n$ 行，继续分奇偶讨论。
+
+    - 若 $n$ 为偶数：
+
+        由于 $n-2 \equiv 0\ (\operatorname{mod} 3)$，可以将这 $(n-2)\times n$ 的区域划分成若干个 $3\times 2$ 的长方形，每个长方形用两个 L 形三角覆盖即可。
+    
+    - 若 $n$ 为奇数：
+
+        先在前三列中用类似上面的蛇形构造，将上下两部分连通起来，保证只预留一个格子不覆盖，然后将剩余部分再按照 $3\times 2$ 的长方形进行划分，并分别用两个 L 形三角填满。
