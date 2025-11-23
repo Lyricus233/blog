@@ -58,10 +58,222 @@ _GitHub 活动_
 
 年底用 Astro 上线了自己的个人网站，也装了自己的博客。最近听朋友说起一个思路很前卫的云评测系统（darkyzhou/seele），借这个机会打算学习一下 Rust，希望能坚持下去。
 
+## 浏览器补全
+
+距离 26 年还有一个月，提前写了。前几个月清了次浏览器记录，可能信息不是很完整。
+
+- A
+
+    `https://aliyun.com/`
+
+    阿里云。今年服务器、CDN 有不少服务都跑在上面，这里要给阿里云售后工程师点赞（
+
+    `https://atcoder.jp/home`
+
+    AtCoder。今年好像没怎么打比赛。
+
+- B
+
+    `https://bpoj.top/`
+
+    不知名 OJ。小学生时期装着玩的，今年复活了一下，临时作为校内 OJ 用了。
+
+    `https://buuoj.cn/`
+
+    BUUOJ。学 CTF 的时候刷题用的，虽然到现在也没做几道。
+
+- C
+
+    `https://codeforces.com/`
+
+    CodeForces。全球最著名的在线评测系统之一。今年打了不少比赛，可惜到退役都没上 Master。
+
+    `https://chatgpt.com/`
+
+    ChatGPT。有时候会问点问题，包括不限于 OI、开发等等。经常因为网络抽风。
+
+- D
+
+    `https://docs.hydro.ac/`
+
+    HydroOJ 文档，OJ 有问题先看文档。
+
+    `https://www.dynadot.com/`
+
+    Dynadot。今年在这里买了几个域名。感觉中文机翻的很烂啊。不过价格倒是挺合适的。
+
+- E
+
+    `https://education.github.com`
+
+    GitHub Education。最近申请学生包来着，在没有理由被拒了几次之后终于发现 school list 上并没有我的学校，然后开工单扯皮最后还是 approved 了。
+
+    `edge://web-capture`, `edge://edge-urls/`
+
+    似乎是浏览器的内部接口，不知道为什么会补全出来。
+
+- F
+
+    `https://fonts.google.com/`
+
+    Google Fonts。写前端的时候会在上面找字体。有时候也会用 `https://fontsource.org/` 这个。
+
+    `https://font.subf.dev/zh-cn/`
+
+    Maple Mono。一个很好看的等宽字体，今年把编辑器全线换成这个字体了。
+
+- G
+
+    `https://github.com/`
+
+    GitHub。下半年几乎每天都上 GitHub，有段时间交了几发 PR，于是很频繁地上 `https://github.com/hydro-dev/Hydro`。
+
+    `http://google.com/`
+
+    Google。谷歌搜索。
+
+- H
+
+    `hydro.ac`
+
+    Hydro 主站，有时候会上去测试一些新特性，可能就当作 DEMO 站用了。
+
+- I
+
+    `https://www.itdog.cn/ping/`
+
+    ITDOG。用来给服务器线路测速。这里吐槽一下为什么腾讯云香港节点还要单独买优选流量包啊。第一次 ping 看到一片黄还以为买错节点了。
+
+    `https://ip.skk.moe/`
+
+    查询当前 IP，以及对部分 CDN 命中的节点。
+
+- J
+
+    J 好像没啥特殊的补全。
+
+    `https://jetbrains.com/`
+
+    好几次都想从 vsc 换到 jetbrains 系列。懒了，下次想起来再迁移吧。
+
+- K
+
+    `https://koishi.chat/`
+
+    装了个 Koishi 框架的 qq 机器人玩了几个月，插件生态很丰富👍
+
+- L
+
+    `https://www.luogu.com.cn/`
+
+    洛谷 \| 计算机科学教育新生态。退役前在这里遇见了很多朋友，也做过不少题。
+
+    `http://localhost:8000/`
+
+    Hydro 开发环境默认端口。
+
+- M
+
+    `https://mail.qq.com/`
+
+    QQ 邮箱，习惯性用 QQ 邮箱了，验证码和各个网站的通知都堆在一起，有时间清理一下。
+
+- N
+
+    `http://noj.****.***/`
+
+    我参与维护的一个基于 Hydro 的校内 OJ。其他没什么了。
+
+- O
+
+    `https://oier.baoshuo.dev/`
+
+    OIer 盒武器，经常在上面找别人盒子（
+
+    `https://oi-wiki.org/`
+
+    OI-Wiki，有时候自学会看上面的教程和例题。
+
+- P
+
+    `https://pay.bpoj.top/`
+
+    个人赞助页，感谢支持（
+
+- Q
+
+    `https://qoj.ac/`
+
+    有一定水平门槛的算竞平台，收集了很多世界各地的赛题。
+
+- R
+
+    无补全，略。
+
+- S
+
+    `https://store3.sorryios.com/`
+
+    ChatGPT 共享账号购买。好像也就三人的能用了（
+
+    `https://support.github.com/`
+
+    GitHub 支持。申请学生包的时候经常上去回复。
+
+- T
+
+    `https://twitter.com/`
+
+    twitter。现在好像叫 X 了。一个面向全球的社交媒体平台。
+
+    `https://tinypng.com/`
+
+    一个无损压缩图片的网站，效果还是蛮不错的。
+
+- U
+
+    `https://yundouxueyuan.com/`
+
+    不知道为什么跳出来 Y 了。云斗学院 OJ。
+
+- V
+
+    `https://vercel.com/`
+
+    Vercel。一个支持自动化部署的云服务平台，大陆访问还算友好，印象里 23 年左右刚注册就给我封掉了。
+
+    `https://vjudge.net/`
+
+    Virtual Judge，虚拟裁判。整合了几乎所有 OJ 的题目，平时在上面训练。
+
+- W
+
+    `https://wakatime.com/dashboard`
+
+    WakaTime。忘记哪年装的了，怎么到现在才记录了 1400+ hrs。
+
+- X
+
+    无补全，略。
+
+- Y
+
+    `https://yuantiji.ac/zh/`
+
+    原题机。模拟赛补题一般会找一下原题，准确率很不错的，只不过对 QOJ 的题好像并不太友好。
+
+- Z
+
+    `https://zhengruioi.com/`
+
+    正睿 OI，也叫正如 IOI。正睿今年换新 OJ 了，hwynb!
+
+    `https://www.zhihu.com/`
+
+    知乎。有时候会在上面看看小说以及热门事件的评价啥的。
+
 ## 总结
 
 今年已经过了大半，我并未找到一些关键词来总结过去发生的事，只好以流水账的形式记录下来。根本原因可能是我在各个方面都是浅尝辄止，并没有过多的了解。不过这样能够把一年里零碎的瞬间串联起来，让每一段记忆都有迹可寻，也许这就是流水账的意义。
 
 希望新的一年能专注于做自己喜欢的事情。也希望未来的高考能有个满意的结果吧。同时祝看到这里的各位事事顺意。
-
-浏览器补全年末再补吧。
