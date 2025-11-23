@@ -1,0 +1,39 @@
+# fonts
+
+webfonts: https://static.bpoj.top/assets/lib/fonts/main.css
+
+# Libraries
+
+toc:
+  css: https://static.bpoj.top/assets/lib/tocbot/tocbot.min.css
+  js: https://static.bpoj.top/assets/lib/tocbot/tocbot.min.js
+
+fontawesome:
+  css: https://static.bpoj.top/assets/lib/fontawesome-free/css/all.min.css
+
+search:
+  js: https://static.bpoj.top/assets/lib/simple-jekyll-search/simple-jekyll-search.min.js
+
+mermaid:
+  js: https://static.bpoj.top/assets/lib/mermaid/mermaid.min.js
+
+dayjs:
+  js:
+    common: https://static.bpoj.top/assets/lib/dayjs/dayjs.min.js
+    locale: https://static.bpoj.top/assets/lib/dayjs/locale/en.js
+    relativeTime: https://static.bpoj.top/assets/lib/dayjs/plugin/relativeTime.js
+    localizedFormat: https://static.bpoj.top/assets/lib/dayjs/plugin/localizedFormat.js
+
+glightbox:
+  css: https://static.bpoj.top/assets/lib/glightbox/glightbox.min.css
+  js: https://static.bpoj.top/assets/lib/glightbox/glightbox.min.js
+
+lazy-polyfill:
+  css: https://static.bpoj.top/assets/lib/loading-attribute-polyfill/loading-attribute-polyfill.min.css
+  js: https://static.bpoj.top/assets/lib/loading-attribute-polyfill/loading-attribute-polyfill.umd.min.js
+
+clipboard:
+  js: https://static.bpoj.top/assets/lib/clipboard/clipboard.min.js
+
+mathjax:
+  js: https://static.bpoj.top/assets/lib/mathjax/tex-chtml.js
