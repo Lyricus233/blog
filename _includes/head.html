@@ -112,11 +112,10 @@
 
   {% if jekyll.environment == 'production' %}
     <!-- PWA -->
-    {%- assign pwa_js = '/app.min.js' | relative_url -%}
     {% if site.pwa.enabled %}
       <script
         defer
-        src="{{ asset_host }}{{ pwa_js }}?baseurl={{ site.baseurl | default: '' }}&register={{ site.pwa.cache.enabled }}"
+        src="{{ '/app.min.js' | relative_url }}?baseurl={{ site.baseurl | default: '' }}&register={{ site.pwa.cache.enabled }}"
       ></script>
     {% endif %}
 
