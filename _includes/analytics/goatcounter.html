@@ -1,6 +1,7 @@
 <!-- GoatCounter -->
 {%- assign asset_host = site.cdn | default: site.url -%}
-<script async src="{{ asset_host }}/assets/js/data/goatcounter-count.js">
-    data-goatcounter="https://{{ site.analytics.goatcounter.id }}.goatcounter.com/count"
-  >
-</script>
+<script 
+  async
+  src="{{ asset_host }}/assets/js/data/goatcounter-count.js"
+  data-goatcounter="https://{{ site.analytics.goatcounter.id }}.goatcounter.com/count"
+></script>
