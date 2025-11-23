@@ -1,4 +1,5 @@
 <head>
+  {%- assign asset_host = site.cdn | default: site.url -%}
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f7f7">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1b1b1e">
@@ -79,7 +80,8 @@
   {% endunless %}
 
   <!-- Theme style -->
-  <link rel="stylesheet" href="{{ '/assets/css/:THEME.css' | replace: ':THEME', site.theme | relative_url }}">
+  {%- assign theme_css = '/assets/css/:THEME.css' | replace: ':THEME', site.theme -%}
+  <link rel="stylesheet" href="{{ asset_host }}{{ theme_css }}">
 
   <!-- Web Font -->
   <link rel="stylesheet" href="{{ site.data.origin[type].webfonts | relative_url }}">
@@ -103,8 +105,8 @@
   {% endif %}
 
   <!-- Scripts -->
-
-  <script src="{{ '/assets/js/dist/theme.min.js' | relative_url }}"></script>
+  {%- assign theme_js = '/assets/js/dist/theme.min.js' | relative_url -%}
+  <script src="{{ asset_host }}{{ theme_js }}"></script>
 
   {% include js-selector.html lang=lang %}
 
