@@ -100,7 +100,7 @@ theme_mode: # [light | dark]
 # will be added to all media resources (site avatar, posts' images, audio and video files) paths starting with '/'
 #
 # e.g. 'https://cdn.com'
-cdn:
+cdn: "https://static.bpoj.top"
 
 # the avatar on sidebar, support local or CORS resources
 avatar: https://github.com/Lyricus233.png
@@ -140,7 +140,7 @@ assets:
     enabled: true # boolean, keep empty means false
     # specify the Jekyll environment, empty means both
     # only works if `assets.self_host.enabled` is 'true'
-    env: # [development | production]
+    env: production
 
 pwa:
   enabled: true # The option for PWA feature (installable)

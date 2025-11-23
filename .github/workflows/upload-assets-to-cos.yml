@@ -1,0 +1,55 @@
+name: Build Chirpy assets & upload to COS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-upload-assets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: |
+          bundle install
+
+      - name: Build site (production)
+        env:
+          JEKYLL_ENV: production
+        run: |
+          bundle exec jekyll b
+
+      - name: Install coscmd
+        run: |
+          pip install coscmd
+
+      - name: Config coscmd
+        env:
+          TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
+          TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+          COS_BUCKET: ${{ secrets.COS_BUCKET }}
+          COS_REGION: ${{ secrets.COS_REGION }}
+        run: |
+          coscmd config \
+            -a "${TENCENT_SECRET_ID}" \
+            -s "${TENCENT_SECRET_KEY}" \
+            -b "${COS_BUCKET}" \
+            -r "${COS_REGION}"
+
+      - name: Upload /assets to COS
+        run: |
+          # 把本地 _site/assets/ 上传到 COS 的 /assets/ 目录
+          coscmd upload -r ./_site/assets/ /assets/
