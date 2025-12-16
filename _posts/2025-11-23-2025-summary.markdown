@@ -266,13 +266,13 @@ _GitHub 活动_
 
     `https://yuantiji.ac/zh/`
 
-    原题机。模拟赛补题一般会找一下原题，准确率很不错的，只不过对 QOJ 的题好像并不太友好。
+    原题机。模拟赛补题一般会找一下原题，准确率很不错的，只不过对 QOJ 的题好像不太友好。
 
 - Z
 
     `https://zhengruioi.com/`
 
-    正睿 OI，也叫正如 IOI。正睿今年换新 OJ 了，hwynb!
+    正睿 OI ~~正如 IOI~~。
 
     `https://www.zhihu.com/`
 
