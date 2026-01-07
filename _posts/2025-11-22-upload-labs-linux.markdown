@@ -6,6 +6,7 @@ category: 技术向
 tags: [CTF]
 locale: zh_CN
 math: true
+published: false
 ---
 
 ## Pass-01（前端检测后缀名）
